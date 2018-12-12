@@ -112,7 +112,15 @@ private:
     cv::Vec3d _lastCameraOrientation;
     cv::Vec3d _lastCameraPose;
 
-    boost::mutex updateModelMutex;
+
+    // 3 mutex scheme for priority scheduling
+    // Low-priority threads: lock L, lock N, lock M, unlock N, { do stuff }, unlock M, unlock L
+    // High-priority thread: lock N, lock M, unlock N, { do stuff }, unlock M
+
+    boost::mutex mD;  // mutex for data updates
+    boost::mutex mN;  // mutex for next-to-access
+    boost::mutex mL;  // mutex for low-priority access
+
     bool updated = true;
     bool filtered = true;
     boost::atomic<bool> visualizerReady;

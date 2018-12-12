@@ -171,7 +171,10 @@ std::string type2str(int type)
 
 void PointCloudMapping::AddMeshToPointCloud(cv::Mat &A, cv::Mat transform, cv::Mat image, cv::Mat depth, std::string frustumID)
 {
-    boost::unique_lock<mutex> updateLock(updateModelMutex);
+    boost::mutex::scoped_lock lock_L(mL);
+    boost::mutex::scoped_lock lock_N(mN);
+    boost::mutex::scoped_lock lock_M(mD);
+    lock_N.unlock();
     //   std::cout << "adding mesh" << std::endl;
 
     // remove padding
@@ -262,7 +265,10 @@ void PointCloudMapping::AddMeshToPointCloud(cv::Mat &A, cv::Mat transform, cv::M
 
 void PointCloudMapping::AddTrainingFrameToPointCloud(cv::Mat &A, cv::Mat transform, cv::Mat color, cv::Mat depth, std::string frustumID)
 {
-    boost::unique_lock<mutex> updateLock(updateModelMutex);
+    boost::mutex::scoped_lock lock_L(mL);
+    boost::mutex::scoped_lock lock_N(mN);
+    boost::mutex::scoped_lock lock_M(mD);
+    lock_N.unlock();
     //   std::cout << "adding cloud" << std::endl;
 
     //    std::cout << "rgb size: " << color.size() << std::endl;
@@ -300,7 +306,10 @@ void PointCloudMapping::AddTrainingFrameToPointCloud(cv::Mat &A, cv::Mat transfo
 
 cv::Mat PointCloudMapping::AddTestFrameToPointCloud(cv::Mat &A, cv::Mat transform, cv::Mat color, cv::Mat depth, img_coord_t &cloud, cv::Mat_<cv::Point2i> &sampling, std::string frustumID)
 {
-    boost::unique_lock<mutex> updateLock(updateModelMutex);
+    boost::mutex::scoped_lock lock_L(mL);
+    boost::mutex::scoped_lock lock_N(mN);
+    boost::mutex::scoped_lock lock_M(mD);
+    lock_N.unlock();
 
     // remove padding
     //  color = color.rowRange(padding, color.rows - padding).colRange(padding, color.cols - padding);
@@ -392,7 +401,11 @@ void PointCloudMapping::Add2D3DCorrespondencesToPointCloud(std::vector< float > 
 }
 
 void PointCloudMapping::AddPointCloud(std::string filename) {
-    boost::unique_lock<mutex> updateLock(updateModelMutex);
+    boost::mutex::scoped_lock lock_L(mL);
+    boost::mutex::scoped_lock lock_N(mN);
+    boost::mutex::scoped_lock lock_M(mD);
+    lock_N.unlock();
+
     PointCloud::Ptr tmp(new PointCloud());
     if (pcl::io::loadPLYFile<PointT> ("cloud.ply", *tmp) == -1) //* load the file
     {
@@ -415,13 +428,30 @@ void PointCloudMapping::AddPointCloud(std::string filename) {
         pcl::visualization::PointCloudColorHandlerRGBField<PointT> rgb(globalMap);
         this->visualizer->addPointCloud(globalMap, rgb, "cloud");
     }
-std::cout << "added" << std::endl;
+
+    // performance test
+    // int CUBE_NUM = 40;
+    // float cube_size = 0.05;
+    // float cube_distance = 0.1;
+    // for (int i = 0; i < CUBE_NUM; ++i)
+    // {
+    //     for (int j = 0; j < CUBE_NUM; ++j)
+    //     {
+    //         cv::waitKey(5);
+    //         visualizer->addCube(i * cube_distance, i * cube_distance + cube_size, j * cube_distance, j * cube_distance + cube_size, 0, cube_size, 1.0, 1.0, 1.0, std::to_string(i * CUBE_NUM + j), 0);
+    //     }
+    // }
+
+    std::cout << "added" << std::endl;
+
+    lock_M.unlock();
+    lock_L.unlock();
     keyFrameUpdated.notify_one();
 }
 
 void PointCloudMapping::AddPointCloud(std::vector<cv::Vec3f> points, std::vector<cv::Vec3b> colorList, float scale)
 {
-    boost::unique_lock<mutex> updateLock(updateModelMutex);
+    boost::unique_lock<mutex> updateLock(mD);
     std::cout << "adding point cloud with points: " << points.size() << std::endl;
     //    ms << "Adding test frame to the cloud\n";
 
@@ -469,7 +499,7 @@ std::cout << "added" << std::endl;
 
 void PointCloudMapping::AddPointCloud(cv::Mat transform, cv::Mat color, img_coord_t &cloud, std::string frustumId)
 {
-    boost::unique_lock<mutex> updateLock(updateModelMutex);
+    boost::unique_lock<mutex> updateLock(mD);
     
     //    ms << "Adding test frame to the cloud\n";
 
@@ -676,7 +706,7 @@ void PointCloudMapping::OptimizePointCloud()
     while (!shutDownFlag)
     {
 
-        unique_lock<mutex> lck_keyframeUpdated(updateModelMutex);
+        unique_lock<mutex> lck_keyframeUpdated(mD);
         keyFrameUpdated.wait(lck_keyframeUpdated);
         if (globalMap)
             if (globalMap->points.size() > 0)
@@ -721,17 +751,25 @@ void PointCloudMapping::RemoveFrustum(const std::string &id)
         std::cout << "FRUSTUM NOT FOUND" << std::endl;
 }
 
+
+//lock N, lock M, unlock N, { do stuff }, unlock M
 void PointCloudMapping::AddOrUpdateFrustum(
     const std::string &id,
     const cv::Mat &transform,
     float scale, double r, double g, double b, float lineWidth)
 {
+
+    boost::mutex::scoped_lock lock_N(mN);
+    boost::mutex::scoped_lock lock_M(mD);
+    lock_N.unlock();
+
     if (id.empty())
     {
         std::cout << "FRUSTUM ID SHOULD NOT BE EMPTY" << std::endl;
         return;
     }
-    boost::unique_lock<mutex> updateLock(updateModelMutex);
+
+
     bool newFrustum = _frustums.find(id) == _frustums.end();
     if (!newFrustum)
     {
@@ -803,6 +841,7 @@ void PointCloudMapping::AddOrUpdateFrustum(
 
             //            ms.trace() << "frustum mesh added" << std::endl;
         }
+        lock_M.unlock();
     }
     else
     {
@@ -859,15 +898,17 @@ void PointCloudMapping::Visualize()
     while (!shutDownFlag)
     {
         //    std::cout << "vis start" << std::endl;
-
-        boost::mutex::scoped_lock updateLock(updateModelMutex);
+        boost::mutex::scoped_lock lock_L(mL);
+        boost::mutex::scoped_lock lock_N(mN);
+        boost::mutex::scoped_lock lock_M(mD);
+        lock_N.unlock();
         this->visualizer->spinOnce(5);
 
         // Get lock on the boolean update and check if cloud was updated
 
         if (filtered && updated)
         {
-            // boost::mutex::scoped_lock updateLock(updateModelMutex);
+            // boost::mutex::scoped_lock updateLock(mD);
 
             this->visualizer->updateSphere(this->clickSphereCenter, 0.1, 255, 255, 255, "clickSphere");
             //            if (showTraining) {
@@ -892,8 +933,9 @@ void PointCloudMapping::Visualize()
                 }
             }
             updated = false;
-            updateLock.unlock();
         }
+        lock_M.unlock();
+        lock_L.unlock();
         //     std::cout << "vis end" << std::endl;
     }
     filterThread->join();
