@@ -26,8 +26,6 @@
 #include <opencv2/core/eigen.hpp>
 #include <pcl/search/kdtree.h>
 #include <pcl/filters/extract_indices.h>
-//#include <pcl/surface/gp3.h>
-//#include <pcl/surface/mls.h>
 
 #include <limits>
 #include <vtkCamera.h>
@@ -42,11 +40,6 @@
 #include <vtkImageData.h>
 #include <vtkLookupTable.h>
 #include <vtkTextureUnitManager.h>
-//#include <vtkJPEGReader.h>
-//#include <vtkBMPReader.h>
-//#include <vtkPNMReader.h>
-//#include <vtkPNGReader.h>
-//#include <vtkTIFFReader.h>
 #include <vtkOpenGLRenderWindow.h>
 #include <vtkPointPicker.h>
 #include <vtkCellPicker.h>
@@ -407,7 +400,7 @@ void PointCloudMapping::AddPointCloud(std::string filename) {
     lock_N.unlock();
 
     PointCloud::Ptr tmp(new PointCloud());
-    if (pcl::io::loadPLYFile<PointT> ("cloud.ply", *tmp) == -1) //* load the file
+    if (pcl::io::loadPLYFile<PointT> (filename, *tmp) == -1) //* load the file
     {
         PCL_ERROR ("Couldn't read file \n");
     }

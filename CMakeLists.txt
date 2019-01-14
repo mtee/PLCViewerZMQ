@@ -43,7 +43,18 @@ include_directories(${ZMQ_INCLUDE_DIRS})
 
 #PROTOBUF
 FIND_PACKAGE(Protobuf REQUIRED)
+
+IF(PROTOBUF_FOUND)
+   MESSAGE(STATUS "Found Protobuf: ${PROTOBUF_INCLUDE_DIR}")
+ENDIF()
+IF(PROTOBUF_FOUND)
+   MESSAGE(STATUS "Found Protobuf: ${PROTOBUF_LIBRARIES}")
+ENDIF()
 include_directories(${PROTOBUF_INCLUDE_DIR})
+#POCO
+set(ENV{Poco_DIR} /usr/local/lib)
+find_package(Poco REQUIRED Data Net)
+include_directories(${Poco_INCLUDE_DIRS})
 
 #Attentive Framework CPP ZMQ implementation
 find_package(CommonsCPP REQUIRED)
@@ -73,11 +84,15 @@ add_executable(main
 set(LIBS
 ${PCL_LIBRARIES}
 ${OpenCV_LIBS}
-#${ZMQ_LIBRARIES}
-#${cppzmq_LIBRARY}
-#${PROTOBUF_LIB}
-#${PROTOBUF_LITE_LIB}
-#${CommonsCPP_LIBRARIES}
+${ZMQ_LIBRARIES}
+${Poco_Foundation_LIBRARY}
+${Poco_Util_LIBRARY}
+${Poco_Data_LIBRARY}
+${Poco_Net_LIBRARY}
+${cppzmq_LIBRARY}
+${PROTOBUF_LIBRARIES}
+${PROTOBUF_LITE_LIBRARIES}
+${CommonsCPP_LIBRARIES}
 )
 
 
