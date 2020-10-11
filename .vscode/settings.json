@@ -57,6 +57,8 @@
         "tuple": "cpp",
         "typeinfo": "cpp",
         "utility": "cpp",
-        "core": "cpp"
+        "core": "cpp",
+        "unordered_set": "cpp",
+        "valarray": "cpp"
     }
 }

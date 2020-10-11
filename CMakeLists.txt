@@ -10,6 +10,7 @@ file(GLOB_RECURSE target_for_ide_srcs "*.h" "*.hpp" "*.hxx" "*.c" "*.cpp" "*.cxx
 add_custom_target(headers SOURCES ${target_for_ide_srcs})
 set (CMAKE_RUNTIME_OUTPUT_DIRECTORY "${PROJECT_SOURCE_DIR}/bin")
 
+
 source_group("" FILES ${UTILS_HEADERS})
 # OpenCV
 find_package(OpenCV REQUIRED)
@@ -60,6 +61,32 @@ include_directories(${Poco_INCLUDE_DIRS})
 find_package(CommonsCPP REQUIRED)
 include_directories(${CommonsCPP_INCLUDE_DIRS})
 
+#FLANN
+set(FLANN_INCLUDE_DIR /home/mikhail/workspace/ACG-localizer/flann-1.6.11-src/src/cpp)
+#set(FLANN_LIBRARY /home/mikhail/workspace/ACG-localizer/flann-1.6.11-src/build/lib/libflann_cpp.so)
+set(FLANN_LIBRARY /home/mikhail/workspace/ACG-localizer/flann-1.6.11-src/build/lib/libflann_cpp_s.a)
+set(FLANN_LIBRARY_DIR /home/mikhail/workspace/ACG-localizer/flann-1.6.11-src/build/lib)
+include_directories (${FLANN_INCLUDE_DIR})
+#link_directories("/home/mikhail/workspace/ACG-localizer/flann-1.6.11-src/build/lib")
+
+#find_package (LAPACK)
+#find_package (GMM)
+#find_package (OpenMesh)
+#find_package( ANN REQUIRED )
+
+include_directories (
+    ${LAPACK_INCLUDE_DIR}
+    ${GMM_INCLUDE_DIR}
+    ${OPENMESH_INCLUDE_DIR}
+    ${ANN_INCLUDE_DIR}
+)
+
+link_directories (
+  ${LAPACK_LIBRARY_DIR}
+  ${OPENMESH_LIBRARY_DIR}
+  ${ANN_LIBRARY_DIR}
+)
+
 
 # OpenMP
 find_package(OpenMP REQUIRED)
@@ -74,26 +101,55 @@ set (CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} -Ofast")
 add_library("opencv_dep_cudart" UNKNOWN IMPORTED)
 set_target_properties("opencv_dep_cudart" PROPERTIES IMPORTED_LOCATION /usr/local/cuda/lib64/libcudart.so) 
    
-add_executable(main 
-    src/main.cpp
+# ACG
+
+add_executable(zmq_req_rep_app 
+    src/zmq_req_rep_app.cpp
+    src/semanticgridentry.cpp
     src/pointcloudmapping.cpp
     src/vtkImageMatSource.cpp
 )
-    
+
+add_executable(video_app 
+    src/video_app.cpp
+    src/semanticgridentry.cpp
+    src/pointcloudmapping.cpp
+    src/vtkImageMatSource.cpp
+)
+
+add_executable(arcore_merge_app 
+    src/arcore_merge_app.cpp
+    src/semanticgridentry.cpp
+    src/pointcloudmapping.cpp
+    src/vtkImageMatSource.cpp
+)
 
 set(LIBS
+"/home/mikhail/workspace/ACG-localizer/lib/libacs_localizerd.so"
 ${PCL_LIBRARIES}
 ${OpenCV_LIBS}
-${ZMQ_LIBRARIES}
 ${Poco_Foundation_LIBRARY}
 ${Poco_Util_LIBRARY}
 ${Poco_Data_LIBRARY}
 ${Poco_Net_LIBRARY}
+${ZMQ_LIBRARIES}
 ${cppzmq_LIBRARY}
 ${PROTOBUF_LIBRARIES}
 ${PROTOBUF_LITE_LIBRARIES}
 ${CommonsCPP_LIBRARIES}
+#${OPENMESH_LIBRARY}
+#${LAPACK_LIBRARY}
+#${LAPACK_LIBRARIES}
+#${GMM_LIBRARY}
+#${ANN_LIBRARIES}
+#${FLANN_LIBRARY}
 )
 
+target_include_directories(zmq_req_rep_app PUBLIC /home/mikhail/workspace/ACG-localizer/include)
+target_link_libraries(zmq_req_rep_app ${LIBS})
 
-target_link_libraries(main ${LIBS})
+target_include_directories(video_app PUBLIC /home/mikhail/workspace/ACG-localizer/include)
+target_link_libraries(video_app ${LIBS})
+
+target_include_directories(arcore_merge_app PUBLIC /home/mikhail/workspace/ACG-localizer/include)
+target_link_libraries(arcore_merge_app ${LIBS})
