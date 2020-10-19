@@ -90,7 +90,6 @@ public:
     void AddPointCloud(std::vector<cv::Vec3f> pointList, std::vector<cv::Vec3b> colorsList,float scale = 1);
     void AddPointCloudFromOBJ(std::string filename);
     void AddTexturedPolygonFromOBJ(std::string filename);
-    void generateSearchOctree(float res, int _nPointsForSolid);
  
     void AddTrainingFrameToPointCloud(cv::Mat& camMatrix, cv::Mat transform, cv::Mat color, cv::Mat depth, std::string frustumId);
     void AddMeshToPointCloud(cv::Mat& camMatrix, cv::Mat transform, cv::Mat color, cv::Mat depth, std::string frustumId);
@@ -122,23 +121,9 @@ private:
     PointCloud::Ptr globalMap;
     PointCloud::Ptr displayCloud;
 
-    Eigen::Vector3i getVoxelIndex(Eigen::Vector3f pos);
-    Eigen::Vector3i getVoxelIndex(std::string indexStr);
-    std::string getVoxelIndexString(Eigen::Vector3f pos);
-    std::string getVoxelIndexString(Eigen::Vector3i indexVec);
-    Eigen::Vector3f getVoxelCenter(std::string indexStr);
-    Eigen::Vector3f getVoxelCenter(Eigen::Vector3i indexVec);    
-    Eigen::Vector3f getColourFromValue(double v, double vmin, double vmax);
-    Eigen::Vector3f getCornersFromCenterPlusSize();
-
-    pcl::octree::OctreePointCloudSearch<pcl::PointXYZRGB>::Ptr octreeSearch;
-    double voxelXmin, voxelYmin, voxelZmin, voxelXmax, voxelYmax, voxelZmax;
-    double voxelSideLength;
     int nViews, nPointsForSolid;
     std::string lastMapMax;
 
-    std::vector<std::string> activeCubeIndices;
-    std::map<std::string, int> attentionHeatMap;
 
     bool gotPointCloudAndPolygon = false;
     bool texturedPolyToggle = true;

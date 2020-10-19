@@ -26,8 +26,6 @@
 #include <opencv2/core/eigen.hpp>
 #include <pcl/search/kdtree.h>
 #include <pcl/filters/extract_indices.h>
-//#include <pcl/surface/gp3.h>
-//#include <pcl/surface/mls.h>
 
 #include <limits>
 #include <vtkCamera.h>
@@ -42,11 +40,6 @@
 #include <vtkImageData.h>
 #include <vtkLookupTable.h>
 #include <vtkTextureUnitManager.h>
-//#include <vtkJPEGReader.h>
-//#include <vtkBMPReader.h>
-//#include <vtkPNMReader.h>
-//#include <vtkPNGReader.h>
-//#include <vtkTIFFReader.h>
 #include <vtkOpenGLRenderWindow.h>
 #include <vtkPointPicker.h>
 #include <vtkCellPicker.h>
@@ -95,8 +88,6 @@ PointCloudMapping::PointCloudMapping(double resolution_, int _windowHeight, int 
     globalMap = boost::make_shared<PointCloud>();
     displayCloud = boost::make_shared<PointCloud>();
 
-    // visualizer = boost::make_shared<pcl::visualization::PCLVisualizer>("viewer");
-
     viewerThread = make_shared<boost::thread>(bind(&PointCloudMapping::Visualize, this));
 
     unique_lock<mutex> lock(visReadyMutex);
@@ -118,11 +109,6 @@ void PointCloudMapping::Shutdown()
         shutDownFlag = true;
         keyFrameUpdated.notify_one();
     }
-    //pcl::io::savePCDFileBinary("test.pcd", globalMap);
-    //   cout << "saving to file" << endl;
-    //   pcl::io::savePLYFile ("test_pcd.ply", *globalMap, true);
-    //   cout << "saved point cloud" << endl;
-
     visualizer->close();
     viewerThread->join();
 
@@ -176,15 +162,6 @@ void PointCloudMapping::AddMeshToPointCloud(cv::Mat &A, cv::Mat transform, cv::M
     boost::mutex::scoped_lock lock_N(mN);
     boost::mutex::scoped_lock lock_M(mD);
     lock_N.unlock();
-    //   std::cout << "adding mesh" << std::endl;
-
-    // remove padding
-    //    image = image.rowRange(padding, image.rows - padding).colRange(padding, image.cols - padding);
-
-    // rescale back to standard size
-    //  if((image.cols != iWidth) || (image.rows != iHeight)) {
-    //      cv::resize(image, image, cv::Size(iWidth, iHeight));
-    //  }
     pcl::IndicesPtr indices(new std::vector<int>);
 
     Eigen::Vector3f viewPoint(transform.at<double>(0, 3), transform.at<double>(1, 3), transform.at<double>(2, 3));
@@ -194,24 +171,12 @@ void PointCloudMapping::AddMeshToPointCloud(cv::Mat &A, cv::Mat transform, cv::M
     {
         indices->at(i) = i;
     }
-    //   std::cout << "radius filtering the cloud" << std::endl;
-
-    // cloud = voxelize(cloud, indices, 0.05f);
-    //std::cout << "starting radius search. Cloud size: " << cloud->size() <<" . Indices: " << indices->size() <<" . Cloud organized: " << cloud->isOrganized() << " . Cloud is dense: " << cloud->is_dense << std::endl;
-
-    //    indices = radiusFiltering(cloud, indices, 0.5f, 5);
-    //   std::cout << "Indices after filtering: " << indices->size() << std::endl;
-
     pcl::PointCloud<pcl::PointXYZRGB>::Ptr output;
-    //  std::cout << "extracting indices" << std::endl;
     output = extractIndices(cloud, indices, false, true);
-    //   std::cout << "creating Mesh from cloud" << std::endl;
-
     std::vector<pcl::Vertices> polygons = getOrganizedFastMesh(output, 5 * 3.14 / 180.0, 10, viewPoint);
 
     if (polygons.size())
     {
-        //       std::cout << "polygons are there" << std::endl;
         // remove unused vertices to save memory
         pcl::PointCloud<pcl::PointXYZRGB>::Ptr outputFiltered(new pcl::PointCloud<pcl::PointXYZRGB>);
         std::vector<pcl::Vertices> outputPolygons;
@@ -250,10 +215,7 @@ void PointCloudMapping::AddMeshToPointCloud(cv::Mat &A, cv::Mat transform, cv::M
         mesh_material.tex_file = "";
 
         textureMesh->tex_materials.push_back(mesh_material);
-        //      std::cout << "adding textured mesh" << std::endl;
-        //TODO:   _cloudViewer->addCloudTextureMesh(cloudName, textureMesh, image, pose);
         addTextureMesh(this->visualizer, textureMesh, image, frustumID, 0);
-        //       std::cout << "added textured mesh" << std::endl;
         updated = true;
         filtered = false;
         keyFrameUpdated.notify_one();
@@ -270,24 +232,8 @@ void PointCloudMapping::AddTrainingFrameToPointCloud(cv::Mat &A, cv::Mat transfo
     boost::mutex::scoped_lock lock_N(mN);
     boost::mutex::scoped_lock lock_M(mD);
     lock_N.unlock();
-    //   std::cout << "adding cloud" << std::endl;
-
-    //    std::cout << "rgb size: " << color.size() << std::endl;
-
-    //    ms.debug() << "camera matrix: "  << A.at<float>(0, 2) << " " << A.at<float>(1, 2) << " " << A.at<float>(0, 0) << " " << A.at<float>(1, 1) << "\n";
-
-    //    ms.debug() << "transform inverted\n";
-
-    //PointCloud::Ptr p = generatePointCloud(A.at<float>(0, 2), A.at<float>(1, 2), A.at<float>(0, 0), A.at<float>(1, 1), transform, transform, depth, true);
     PointCloud::Ptr p = generatePointCloud(A.at<float>(0, 2), A.at<float>(1, 2), A.at<float>(0, 0), A.at<float>(1, 1), transform, color, depth.rowRange(0, depth.rows).colRange(0, depth.cols), true, 8, 2.0);
     *globalMap += *p;
-    //    ms.debug() <<  "Point cloud generated: " << p->size() << " points." << std::endl;
-    //  AddOrUpdateFrustum(frustumID, transform, 0.2, 0, 0, 255);
-
-    //  ms.debug() <<  "Adding frustum:\n" << transform << "\n id: " << frustumID << std::endl;
-
-    //    ms.debug() <<  "Frustum added." << std::endl;
-    //  std::cout << "cloud added" << std::endl;
 
     updated = true;
 
@@ -311,20 +257,8 @@ cv::Mat PointCloudMapping::AddTestFrameToPointCloud(cv::Mat &A, cv::Mat transfor
     boost::mutex::scoped_lock lock_N(mN);
     boost::mutex::scoped_lock lock_M(mD);
     lock_N.unlock();
-
-    // remove padding
-    //  color = color.rowRange(padding, color.rows - padding).colRange(padding, color.cols - padding);
-
-    // rescale back to standard size
-    //  if((color.cols != iWidth) || (color.rows != iHeight)) {
-    //      cv::resize(color, color, cv::Size(iWidth, iHeight));
-    //   }
-    //    ms.debug() << "transform before inversion: " << tCloned << "\n";
-    //  tCloned = tCloned.inv();
     if (!depth.empty())
     {
-        //        ms.debug() << "depth provided\n";
-
         PointCloud::Ptr p = generatePointCloud(A.at<float>(0, 2), A.at<float>(1, 2), A.at<float>(0, 0), A.at<float>(1, 1), transform, color, depth.rowRange(0, depth.rows).colRange(0, depth.cols), false, 8);
         *displayCloud = *p;
     }
@@ -336,12 +270,7 @@ cv::Mat PointCloudMapping::AddTestFrameToPointCloud(cv::Mat &A, cv::Mat transfor
         origin.x = transform.at<double>(0, 3);
         origin.y = transform.at<double>(1, 3);
         origin.z = transform.at<double>(2, 3);
-        //        ms.debug() << "transform: " << tCloned << "\n";
-        //        ms.debug() << "origin: " << origin.x << "; " << origin.y << "; " << origin.z << "\n";
         cv::Mat depthMapEstimated(cloud.rows, cloud.cols, CV_64F);
-        //        ms.debug() << "reconstructing depth from " << cloud.cols << " by " << cloud.rows << " estimates; type: " << type2str(cloud.type()) << "\n";
-        //        ms.debug() << "reconstructing color from " << color.cols << " by " << color.rows << " estimates; type: " << type2str(color.type()) << "\n";
-        //        ms.debug() << "sampling matrix size: " << sampling.cols << " by " << sampling.rows << " elements\n";
         for (int i = 0; i < cloud.cols; i++)
         {
             for (int j = 0; j < cloud.rows; j++)
@@ -422,8 +351,6 @@ void PointCloudMapping::AddPointCloud(std::string filename) {
 
     updated = true;
     filtered = true;
-
-    // cv::Mat cameraMatrix = AddOrUpdateFrustum(frustumId, tCloned, 0.5, 255, 0, 0);
     if (!this->visualizer->updatePointCloud(globalMap, "cloud"))
     {
         pcl::visualization::PointCloudColorHandlerRGBField<PointT> rgb(globalMap);
@@ -442,16 +369,6 @@ void PointCloudMapping::AddPointCloud(std::vector<cv::Vec3f> points, std::vector
 {
     boost::unique_lock<mutex> updateLock(mD);
     std::cout << "adding point cloud with points: " << points.size() << std::endl;
-    //    ms << "Adding test frame to the cloud\n";
-
-    // remove padding
-    //      color = color.rowRange(padding, color.rows - padding).colRange(padding, color.cols - padding);
-
-    // rescale back to standard size
-    //      if((color.cols != iWidth) || (color.rows != iHeight)) {
-    //          cv::resize(color, color, cv::Size(iWidth, iHeight));
-    //       }
-
     PointCloud::Ptr tmp(new PointCloud());
     float range = 1000;
     for (int i = 0; i < points.size(); i++)
@@ -470,13 +387,9 @@ void PointCloudMapping::AddPointCloud(std::vector<cv::Vec3f> points, std::vector
             tmp->points.push_back(p);
     }
     tmp->is_dense = false;
-
     *globalMap += *tmp;
-
     updated = true;
     filtered = true;
-
-    // cv::Mat cameraMatrix = AddOrUpdateFrustum(frustumId, tCloned, 0.5, 255, 0, 0);
     if (!this->visualizer->updatePointCloud(globalMap, "cloud"))
     {
         pcl::visualization::PointCloudColorHandlerRGBField<PointT> rgb(globalMap);
@@ -490,30 +403,13 @@ void PointCloudMapping::AddPointCloud(std::vector<cv::Vec3f> points, std::vector
 void PointCloudMapping::AddPointCloud(cv::Mat transform, cv::Mat color, img_coord_t &cloud, std::string frustumId)
 {
     boost::unique_lock<mutex> updateLock(mD);
-
-    //    ms << "Adding test frame to the cloud\n";
-
-    // remove padding
-    //      color = color.rowRange(padding, color.rows - padding).colRange(padding, color.cols - padding);
-
-    // rescale back to standard size
-    //      if((color.cols != iWidth) || (color.rows != iHeight)) {
-    //          cv::resize(color, color, cv::Size(iWidth, iHeight));
-    //       }
     cv::Mat_<double> tCloned = transform.clone();
-    //    ms.debug() << "transform before inversion: " << tCloned << "\n";
-    //  tCloned = tCloned.inv();
-    //    ms.debug() << "no GT depth provided\n";
     PointCloud::Ptr tmp(new PointCloud());
     PointT origin;
     origin.x = tCloned(0, 3);
     origin.y = tCloned(1, 3);
     origin.z = tCloned(2, 3);
-    //    ms.debug() << "transform: " << tCloned << "\n";
-    //    ms.debug() << "origin: " << origin.x << "; " << origin.y << "; " << origin.z << "\n";
     cv::Mat depthMapEstimated = cv::Mat::zeros(cloud.rows, cloud.cols, CV_64F);
-    //    ms.debug() << "reconstructing depth from " << cloud.cols << " by " << cloud.rows << " estimates; type: " << type2str(cloud.type()) << "\n";
-    //    ms.debug() << "reconstructing color from " << color.cols << " by " << color.rows << " estimates; type: " << type2str(color.type()) << "\n";
     for (int i = 0; i < cloud.cols; i++)
     {
         for (int j = 0; j < cloud.rows; j++)
@@ -537,23 +433,7 @@ void PointCloudMapping::AddPointCloud(cv::Mat transform, cv::Mat color, img_coor
         }
     }
     tmp->is_dense = false;
-    //    ms.debug() << "estimated depth point cloud has " << tmp->points.size() << " points\n";
-
-    //    double minVal;
-    //    double maxVal;
-    //    cv::minMaxLoc(depthMapEstimated, &minVal, &maxVal);
-
-    // rescale color space so it fills the range [0; 255]
-    //    cv::Mat adjMap;
-    //    cv::convertScaleAbs(depthMapEstimated, adjMap, 255 / 8);
-    //  cv::resize(adjMap, adjMap, cv::Size(), 8, 8, cv::INTER_NEAREST);
-    //    cv::imshow("depthmap reconstructed", adjMap);
-    //    cv::waitKey(1);
-    //    cv::imshow("color", color);
-    //    cv::waitKey(1);
-
     *globalMap += *tmp;
-
     updated = true;
     filtered = false;
 
@@ -573,36 +453,6 @@ void PointCloudMapping::keyboardEventOccurred(const pcl::visualization::Keyboard
 {
     std::cout << " keyboard callback called" << std::endl;
     pcl::visualization::PCLVisualizer *viewer = static_cast<pcl::visualization::PCLVisualizer *>(viewer_void);
-    /*  if (event.getKeySym () == "w" && event.keyDown ()) {
-      pcl::visualization::Camera cam;
-      viewer->getCameraParameters(cam);
-      double delta = 0.1;
-      cam.focal[2] += delta;
-      viewer->setCameraParameters(cam, 0);
-
-      cout << "Cam: " << endl
-                   << " - pos: (" << cam.pos[0] << ", "    << cam.pos[1] << ", "    << cam.pos[2] << ")" << endl
-                   << " - view: ("    << cam.view[0] << ", "   << cam.view[1] << ", "   << cam.view[2] << ")"    << endl
-                   << " - focal: ("   << cam.focal[0] << ", "  << cam.focal[1] << ", "  << cam.focal[2] << ")"   << endl;
-
-    //  viewer->setCameraPosition(camera.pos[0] + 0.1, camera.pos[1], camera.pos[2], camera.view[0], camera.view[1], camera.view[2], 0);
-
-  }
-
-  if (event.getKeySym () == "a" && event.keyDown ()) {
-      pcl::visualization::Camera cam;
-      viewer->getCameraParameters(cam);
-      double delta = 0.1;
-      cam.focal[0] -= delta;
-      viewer->setCameraParameters(cam, 0);
-  }
-  if (event.getKeySym () == "d" && event.keyDown ()) {
-          pcl::visualization::Camera cam;
-          viewer->getCameraParameters(cam);
-          double delta = 0.1;
-          cam.focal[0] += delta;
-          viewer->setCameraParameters(cam, 0);
-    } */
     if (event.getKeySym() == "e" && event.keyDown())
     {
         showTest = !showTest;
@@ -737,8 +587,6 @@ void PointCloudMapping::OptimizePointCloud()
             {
                 filtered = true;
             }
-
-        //    std::cout << "filtering done" << std::endl;
     }
 }
 
@@ -826,14 +674,6 @@ void PointCloudMapping::AddOrUpdateFrustum(
                 frustumPoints[i] = pcl::transformPoint(frustumPoints[i], t);
             }
 
-            //    std::vector<pcl::visualization::Camera> cameras;
-            //    this->visualizer->getCameras(cameras);
-
-            //            this->visualizer->setCameraPosition(
-            //                t(0, 3), t(1, 3), t(2, 3),
-            //                cameras.front().focal[0], cameras.front().focal[1], cameras.front().focal[2],
-            //                cameras.front().view[0], cameras.front().view[1], cameras.front().view[2]);
-
             pcl::PolygonMesh mesh;
             pcl::Vertices vertices;
             vertices.vertices.resize(sizeof(frustum_indices) / sizeof(int));
@@ -843,14 +683,9 @@ void PointCloudMapping::AddOrUpdateFrustum(
             }
             pcl::toPCLPointCloud2(frustumPoints, mesh.cloud);
             mesh.polygons.push_back(vertices);
-            //            ms.trace() << "adding frustum mesh: " << mesh.cloud.data.size() << " vertices size: " << vertices.vertices.size() << std::endl;
             visualizer->addPolylineFromPolygonMesh(mesh, id);
-            //            ms.trace() << "polyline added" << std::endl;
             visualizer->setShapeRenderingProperties(pcl::visualization::PCL_VISUALIZER_COLOR, r, g, b, id);
-            //visualizer->setPointCloudRenderingProperties(pcl::visualization::PCL_VISUALIZER_LINE_WIDTH, 20, id);
             visualizer->setShapeRenderingProperties(pcl::visualization::PCL_VISUALIZER_LINE_WIDTH, lineWidth, id);
-
-            //            ms.trace() << "frustum mesh added" << std::endl;
         }
         lock_M.unlock();
     }
@@ -942,14 +777,6 @@ void PointCloudMapping::AddOrUpdateFrustum(
         frustumPoints[i] = pcl::transformPoint(frustumPoints[i], t);
     }
 
-    //    std::vector<pcl::visualization::Camera> cameras;
-    //    this->visualizer->getCameras(cameras);
-
-    //            this->visualizer->setCameraPosition(
-    //                t(0, 3), t(1, 3), t(2, 3),
-    //                cameras.front().focal[0], cameras.front().focal[1], cameras.front().focal[2],
-    //                cameras.front().view[0], cameras.front().view[1], cameras.front().view[2]);
-
     pcl::PolygonMesh mesh;
     pcl::Vertices vertices;
     vertices.vertices.resize(sizeof(frustum_indices) / sizeof(int));
@@ -959,219 +786,9 @@ void PointCloudMapping::AddOrUpdateFrustum(
     }
     pcl::toPCLPointCloud2(frustumPoints, mesh.cloud);
     mesh.polygons.push_back(vertices);
-    //            ms.trace() << "adding frustum mesh: " << mesh.cloud.data.size() << " vertices size: " << vertices.vertices.size() << std::endl;
     visualizer->addPolylineFromPolygonMesh(mesh, id);
-    //            ms.trace() << "polyline added" << std::endl;
     visualizer->setShapeRenderingProperties(pcl::visualization::PCL_VISUALIZER_COLOR, r, g, b, id);
-    //visualizer->setPointCloudRenderingProperties(pcl::visualization::PCL_VISUALIZER_LINE_WIDTH, 20, id);
     visualizer->setShapeRenderingProperties(pcl::visualization::PCL_VISUALIZER_LINE_WIDTH, lineWidth, id);
-    //            ms.trace() << "frustum mesh added" << std::endl;
-
-    // if(useOctree){
-    //     ++nViews;
-
-    //     pcl::PointXYZ p1;
-    //     p1.x = frustumPoints[0].x;
-    //     p1.y = frustumPoints[0].y;
-    //     p1.z = frustumPoints[0].z;
-
-    //     pcl::PointXYZ p2;   // for line through center of frustum
-    //     p2.x = (frustumPoints[1].x + frustumPoints[3].x) / 2.;
-    //     p2.y = (frustumPoints[1].y + frustumPoints[3].y) / 2.;
-    //     p2.z = (frustumPoints[1].z + frustumPoints[3].z) / 2.;
-
-    //     Eigen::Vector3f o(p1.x, p1.y, p1.z);
-    //     Eigen::Vector3f p(p2.x, p2.y, p2.z);
-
-    //     // direction of center of frustum, equivalent to gaze norm pos [0, 0]
-    //     Eigen::Vector3f center_dir(p - o);
-
-    //     // define coordinate system of frustum, where Z is along the central sight line
-    //     Eigen::Vector3f frustumXaxis(
-    //         frustumPoints[2].x - frustumPoints[1].x,
-    //         frustumPoints[2].y - frustumPoints[1].y,
-    //         frustumPoints[2].z - frustumPoints[1].z
-    //     );
-
-    //     frustumXaxis = frustumXaxis.normalized();
-
-    //     Eigen::Vector3f frustumYaxis(
-    //         frustumPoints[3].x - frustumPoints[2].x,
-    //         frustumPoints[3].y - frustumPoints[2].y,
-    //         frustumPoints[3].z - frustumPoints[2].z
-    //     );
-
-    //     frustumYaxis = frustumYaxis.normalized();
-
-    //     // rotate to gaze position
-    //     gazeNormX = (gazeNormX * 2.) - 1.;      // shift from [0,1] to [-1, 1]
-    //     gazeNormY = (gazeNormY * 2.) - 1.;
-
-    //     // transform gaze norm pos in [-1, 1] to [-Pi/2, Pi/2]
-    //     // rotation around frustum Y-axis corresponds to gaze norm X-axis
-    //     Eigen::AngleAxis<float> yRot(gazeNormX * 0.25 * M_PI, frustumYaxis);
-
-    //     // rotation around frustum X-axis corresponds to gaze norm Y-axis
-    //     Eigen::AngleAxis<float> xRot(gazeNormY * 0.25 * M_PI, frustumXaxis);
-
-    //     Eigen::Transform<float, 3, Eigen::Affine> t = Eigen::Transform<float, 3, Eigen::Affine>::Identity();
-    //     t.rotate(yRot);
-    //     t.rotate(xRot);
-
-    //     center_dir = t * center_dir;
-
-    //     pcl::PointXYZ p3;   // for sight lines
-    //     p3.x = frustumPoints[0].x + 12.5 * center_dir.x();
-    //     p3.y = frustumPoints[0].y + 12.5 * center_dir.y();
-    //     p3.z = frustumPoints[0].z + 12.5 * center_dir.z();
-
-    //     visualizer->addLine<pcl::PointXYZ, pcl::PointXYZ>(p1, p3, "sightline");
-    //     this->visualizer->setShapeRenderingProperties(pcl::visualization::RenderingProperties::PCL_VISUALIZER_COLOR, 1., 1., 1., "sightline");
-
-    //     pcl::PointCloud<pcl::PointXYZRGB>::VectorType voxelsInRay;
-    //     std::vector<int> indicesInRay;
-
-    //     octreeSearch->getIntersectedVoxelIndices(o, center_dir, indicesInRay);
-    //     // std::cout << "Got origin [" << o.x() << ", " << o.y() << ", " << o.z() << "], dir [" << dir.x() << ", " << dir.y() << ", " << dir.z() << "]. N voxels: " << indicesInRay.size() << std::endl;
-
-    //     octreeSearch->getIntersectedVoxelCenters(o, center_dir, voxelsInRay);
-
-    //     // reset semantic boxes
-    //     if(semanticMode){
-    //         for(std::vector<boost::shared_ptr<SemanticGridEntry> >::iterator it = semanticGridList.begin(); it != semanticGridList.end(); ++it){
-    //             (*it)->setAlreadyIncremented(false);
-    //         }
-    //     }
-
-    //     // increment heat map for all touched voxels
-    //     for(pcl::PointCloud<pcl::PointXYZRGB>::iterator it = voxelsInRay.begin(); it != voxelsInRay.end(); ++it){
-
-    //         Eigen::Vector3f posvec(it->x, it->y, it->z);
-
-    //         Eigen::Vector3i voxelIndex = getVoxelIndex(posvec);
-
-    //         double x = (voxelIndex.x() + 0.5) * voxelSideLength + voxelXmin;
-    //         double y = (voxelIndex.y() + 0.5) * voxelSideLength + voxelYmin;
-    //         double z = (voxelIndex.z() + 0.5) * voxelSideLength + voxelZmin;
-
-    //         double s = voxelSideLength / 2.0;
-
-    //         std::vector<int> voxelIndices;
-    //         int nPointsInVoxel = octreeSearch->boxSearch(Eigen::Vector3f(x-s, y-s, z-s), Eigen::Vector3f(x+s, y+s, z+s), voxelIndices);
-
-    //         // std::cout << nPointsInVoxel << " ";
-
-    //         std::string indexString = getVoxelIndexString(posvec);
-
-    //         attentionHeatMap[indexString]++;
-
-    //         // generate cube if first encountered
-    //         if(attentionHeatMap[indexString] == 1){
-    //             // add new cube
-    //             activeCubeIndices.push_back(indexString);
-
-    //             // std::cout << "Adding cube at [" << x << ", " << y << ", " << z << "], index " << indexString << std::endl;
-
-    //             if(!semanticMode){
-    //                 visualizer->addCube(x - s, x + s, y - s, y + s, z - s , z + s, 0.5, 0.5, 0.5, indexString);
-    //                 this->visualizer->setShapeRenderingProperties(pcl::visualization::RenderingProperties::PCL_VISUALIZER_OPACITY, 0.3, indexString);
-    //             }
-    //         }
-            
-    //         // check for associated semantic box
-    //         if(semanticMode && !semanticGridMap[indexString].empty()){
-    //             // got association, increment if not already incremented in this update
-    //             for(std::vector<boost::shared_ptr<SemanticGridEntry>>::iterator it = semanticGridMap[indexString].begin(); it != semanticGridMap[indexString].end(); ++it){
-
-    //                 if((*it)->getAlreadyIncremented()) continue;
-
-    //                 (*it)->increment();
-    //                 (*it)->setAlreadyIncremented(true);
-    //             }
-    //         }
-
-    //         // can try terminating sight line if solid "wall" is encountered, 
-    //         // i.e. voxel with more than a certain number of points
-    //         if(nPointsInVoxel > nPointsForSolid) {
-    //             // try setting sight line here to that voxel
-    //             this->visualizer->removeShape("sightline");
-    //             pcl::PointXYZ p3(x, y, z);
-    //             this->visualizer->addLine<pcl::PointXYZ, pcl::PointXYZ>(p1, p3, "sightline");
-    //             this->visualizer->setShapeRenderingProperties(pcl::visualization::RenderingProperties::PCL_VISUALIZER_COLOR, 1., 1., 1., "sightline");
-
-    //             // std::cout << "Terminating line point: [" << x << ", " << y << ", " << z << "]." << std::endl;
-
-    //             break;
-    //         }
-
-    //     }
-
-    //     // std::cout << std::endl;
-
-    //     // change color for all active heat map voxels
-    //     if(semanticMode){
-    //         // get maximum heat map value
-    //         int semanticMapMax = 0;
-
-    //         for(std::vector<boost::shared_ptr<SemanticGridEntry> >::iterator it = semanticGridList.begin(); it != semanticGridList.end(); ++it){
-    //             if((*it)->getHeatMapValue() > semanticMapMax) semanticMapMax = (*it)->getHeatMapValue();
-    //         }
-
-    //         for(std::vector<boost::shared_ptr<SemanticGridEntry> >::iterator it = semanticGridList.begin(); it != semanticGridList.end(); ++it){
-    //             if((*it)->getHeatMapValue() == 0.) continue;
-
-    //             // calculate relative heat map value
-    //             double heatVal = (*it)->getHeatMapValue() / (double) semanticMapMax;
-
-    //             // get color value
-    //             Eigen::Vector3f col_vector = getColourFromValue(heatVal, 0., 1.);
-
-    //             // double opacity = 0.95 * heatval;        // orig
-    //             double opacity = 0.95 * (0.2 + heatVal);
-    //             if(opacity > 0.95) opacity = 0.95;
-
-    //             this->visualizer->setShapeRenderingProperties(pcl::visualization::RenderingProperties::PCL_VISUALIZER_OPACITY, opacity, (*it)->idTag);
-    //             // this->visualizer->setShapeRenderingProperties(pcl::visualization::RenderingProperties::PCL_VISUALIZER_COLOR, 0., 0., opacity, (*it)->idTag);
-    //             this->visualizer->setShapeRenderingProperties(pcl::visualization::RenderingProperties::PCL_VISUALIZER_COLOR, col_vector.x(), col_vector.y(), col_vector.z(), (*it)->idTag);
-
-    //         }
-    //     }
-    //     else{
-    //         // get maximum heat map value
-    //         int heatMapMax = 0;
-    //         for(std::map<std::string, int>::const_iterator it = attentionHeatMap.begin(); it != attentionHeatMap.end(); ++it){
-    //             if(it->second > heatMapMax) heatMapMax = it->second;
-    //         }
-
-    //         for(std::map<std::string, int>::const_iterator it = attentionHeatMap.begin(); it != attentionHeatMap.end(); ++it){
-
-    //             // calculate relative heat map value
-    //             double heatVal = it->second / (double) heatMapMax;
-
-    //             if(it->second == heatMapMax && it->first != lastMapMax){
-    //                 Eigen::Vector3f pos = this->getVoxelCenter(it->first);
-    //                 // std::cout << "Maximal heat map changed (" << lastMapMax << " -> " << it->first << "). Center at [" << pos.x() << ", " << pos.y() << ", " << pos.z() << "]." << std::endl;
-
-    //                 lastMapMax = it->first;
-    //             }
-
-    //             // get color value
-    //             Eigen::Vector3f col_vector = getColourFromValue(heatVal, 0., 1.);
-
-    //             double opacity = 0.95 * (0.2 + heatVal);     // color version
-    //             if(opacity > 0.95) opacity = 0.95;
-
-    //             // double opacity = 0.7 * (0.2 + heatVal);     // greyscale version
-    //             // if(opacity > 0.7) opacity = 0.7;
-
-    //             this->visualizer->setShapeRenderingProperties(pcl::visualization::RenderingProperties::PCL_VISUALIZER_OPACITY, opacity, it->first);
-    //             this->visualizer->setShapeRenderingProperties(pcl::visualization::RenderingProperties::PCL_VISUALIZER_COLOR, col_vector.x(), col_vector.y(), col_vector.z(), it->first);
-    //             // this->visualizer->setShapeRenderingProperties(pcl::visualization::RenderingProperties::PCL_VISUALIZER_COLOR, 0.,opacity, 0.,  it->first);
-    //         }
-    //     }
-    // }
-
-//    this->visualizer->updatePointCloud(globalMap, "cloud");
     
     lock_M.unlock();
 
@@ -1241,19 +858,6 @@ void PointCloudMapping::Visualize()
 
         if (filtered && updated)
         {
-            // boost::mutex::scoped_lock updateLock(mD);
-
-            // this->visualizer->updateSphere(this->clickSphereCenter, 0.1, 255, 255, 255, "clickSphere");
-            //            if (showTraining) {
-            //                if (!this->visualizer->updatePointCloud(globalMap, "cloud")) {
-            //                    this->visualizer->addPointCloud(globalMap, rgb, "cloud");
-            //                    this->visualizer->setPointCloudRenderingProperties(
-            //                                pcl::visualization::PCL_VISUALIZER_POINT_SIZE, 6.0,
-            //                                "cloud");
-            //                }
-            //            } else {
-            //                this->visualizer->removePointCloud("cloud");
-            //            }
             if (showTest)
             {
                 if (!visualizer->updatePointCloud(displayCloud, "curFrame"))
@@ -1305,7 +909,6 @@ pcl::IndicesPtr PointCloudMapping::radiusFiltering(
         pcl::IndicesPtr output(new std::vector<int>(indices->size()));
         int oi = 0; // output iterator
         tree->setInputCloud(cloud, indices);
-        //      std::cout << "starting radius search. Cloud size: " << cloud->size() <<" . Indices: " << indices->size() << ". Radius: " << radiusSearch << " . Cloud organized: " << cloud->isOrganized() << " . Cloud is dense: " << cloud->is_dense << std::endl;
         for (unsigned int i = 0; i < indices->size(); ++i)
         {
             std::vector<int> kIndices;
@@ -1346,8 +949,6 @@ std::vector<pcl::Vertices> PointCloudMapping::getOrganizedFastMesh(
     int trianglePixelSize,
     const Eigen::Vector3f &viewpoint)
 {
-    //   std::cout << "creating mesh from cloud with " << cloud->size() << " points, from the viewpoint: " << viewpoint  << std::endl;
-    //   std::cout << "cloud is organized: " << cloud->isOrganized() << std::endl;
     pcl::OrganizedFastMesh<pcl::PointXYZRGB> ofm;
     ofm.setTrianglePixelSize(trianglePixelSize);
     ofm.setTriangulationType(pcl::OrganizedFastMesh<pcl::PointXYZRGB>::QUAD_MESH);
@@ -1662,156 +1263,4 @@ void PointCloudMapping::AddTexturedPolygonFromOBJ(std::string filename){
     }
 
     keyFrameUpdated.notify_one();
-}
-
-void PointCloudMapping::generateSearchOctree(float res, int _nPointsForSolid) {
-    boost::mutex::scoped_lock lock_L(mL);
-    boost::mutex::scoped_lock lock_N(mN);
-    boost::mutex::scoped_lock lock_M(mD);
-    lock_N.unlock();
-
-    this->nPointsForSolid = _nPointsForSolid;
-
-    octreeSearch = boost::make_shared<pcl::octree::OctreePointCloudSearch<pcl::PointXYZRGB> >(res);
-
-    octreeSearch->setInputCloud(globalMap);
-    octreeSearch->addPointsFromInputCloud();
-
-    octreeSearch->getBoundingBox(voxelXmin, voxelYmin, voxelZmin, voxelXmax, voxelYmax, voxelZmax);
-
-    // std::cout << "Bounding box: Min [" << xmin << ", " << ymin << ", " << ymax << "], Max [" << xmax << ", " << ymax << ", " << zmax << "]." << std::endl;
-
-    // cv::Mat cameraMatrix = AddOrUpdateFrustum(frustumId, tCloned, 0.5, 255, 0, 0);
-    if (!this->visualizer->updatePointCloud(globalMap, "cloud"))
-    {
-        pcl::visualization::PointCloudColorHandlerRGBField<PointT> rgb(globalMap);
-        this->visualizer->addPointCloud(globalMap, rgb, "cloud");
-    }
-
-    int i = 0;
-    int depth = octreeSearch->getTreeDepth();
-
-    voxelSideLength = std::sqrt(octreeSearch->getVoxelSquaredSideLen (depth));
-
-    /*
-    for (pcl::octree::OctreePointCloudSearch<pcl::PointXYZRGB>::FixedDepthIterator tree_it = octreeSearch->fixed_depth_begin (depth);
-         tree_it != octreeSearch->fixed_depth_end ();
-         ++tree_it)
-    {
-        Eigen::Vector3f voxel_min, voxel_max;
-
-        octreeSearch->getVoxelBounds(tree_it, voxel_min, voxel_max);
-
-        // std::cout << "Got voxel bounds at depth " << depth << ": Min " << voxel_min << ", max " << voxel_max << std::endl;
-
-        Eigen::Vector3f voxel_center = (voxel_max + voxel_min) / 2.0f;
-
-        double s = voxelSideLength / 2.0;
-
-        float x = voxel_center.x();
-        float y = voxel_center.y();
-        float z = voxel_center.z();
-
-        // Eigen::Vector3i index_vector = getVoxelIndex(voxel_center);
-        std::string indexString = getVoxelIndexString(voxel_center);
-
-        std::cout << "Adding cube at [" << x << ", " << y << ", " << z << "], index " << indexString << std::endl;
-
-        activeCubeIndices.push_back(indexString);
-        // attentionHeatMap[indexString] = 0;
-
-        visualizer->addCube(x - s, x + s, y - s, y + s, z - s , z + s, 0., 0.5, 0.5, indexString);
-        this->visualizer->setShapeRenderingProperties(pcl::visualization::RenderingProperties::PCL_VISUALIZER_OPACITY, 0.0, indexString);
-
-        ++i;
-
-        // if(i>3) break;
-    }
-    */
-
-    // keyFrameUpdated.notify_one();
-}
-
-Eigen::Vector3i PointCloudMapping::getVoxelIndex(Eigen::Vector3f pos){
-
-    Eigen::Vector3i indexVector(
-        floor((pos.x() - voxelXmin) / voxelSideLength),
-        floor((pos.y() - voxelYmin) / voxelSideLength),
-        floor((pos.z() - voxelZmin) / voxelSideLength)
-        );
-
-     return indexVector;
-}
-
-Eigen::Vector3i PointCloudMapping::getVoxelIndex(std::string indexStr){
-
-    Eigen::Vector3i indexVector;
-    std::istringstream iss(indexStr);
-    char dash;
-
-    iss >> indexVector(0) >> dash >> indexVector(1) >> dash >> indexVector(2);
-
-    return indexVector;
-}
-std::string PointCloudMapping::getVoxelIndexString(Eigen::Vector3i indexVec){
-    std::string indexString;
-
-    indexString.append(std::to_string(indexVec.x()));
-    indexString.append("_");
-    indexString.append(std::to_string(indexVec.y()));
-    indexString.append("_");
-    indexString.append(std::to_string(indexVec.z()));
-
-    return indexString;
-}
-std::string PointCloudMapping::getVoxelIndexString(Eigen::Vector3f pos){
-
-    Eigen::Vector3i indexVec = getVoxelIndex(pos);
-
-    return this->getVoxelIndexString(indexVec);
-}
-
-Eigen::Vector3f PointCloudMapping::getVoxelCenter(Eigen::Vector3i indexVec){
-
-    Eigen::Vector3f centerVec(
-        (indexVec.x() * voxelSideLength) + voxelXmin + (voxelSideLength / 2.),
-        (indexVec.y() * voxelSideLength) + voxelYmin + (voxelSideLength / 2.),
-        (indexVec.z() * voxelSideLength) + voxelZmin + (voxelSideLength / 2.)
-    );
-
-    return centerVec;
-}
-
-Eigen::Vector3f PointCloudMapping::getVoxelCenter(std::string indexStr){
-    Eigen::Vector3f centerVec = this->getVoxelCenter( this->getVoxelIndex(indexStr) );
-
-    return centerVec;
-}
-
-Eigen::Vector3f PointCloudMapping::getColourFromValue(double v, double vmin, double vmax){
-    Eigen::Vector3f col_vector(1.0, 1.0, 1.0);
-
-    double dv;
-
-    if (v < vmin)
-        v = vmin;
-    if (v > vmax)
-        v = vmax;
-    dv = vmax - vmin;
-
-    if (v < (vmin + 0.25 * dv)) {
-        col_vector.x() = 0;
-        col_vector.y() = 4 * (v - vmin) / dv;
-    } else if (v < (vmin + 0.5 * dv)) {
-        col_vector.x() = 0;
-        col_vector.z() = 1 + 4 * (vmin + 0.25 * dv - v) / dv;
-    } else if (v < (vmin + 0.75 * dv)) {
-        col_vector.x() = 4 * (v - vmin - 0.5 * dv) / dv;
-        col_vector.z() = 0;
-    } else {
-        col_vector.y() = 1 + 4 * (vmin + 0.75 * dv - v) / dv;
-        col_vector.z() = 0;
-    }
-
-    return col_vector;
 }

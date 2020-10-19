@@ -184,7 +184,6 @@ int main(int argc, const char *argv[])
     loadPointCloudFromBIN(vw_assignments, cloudMapper, 100000);
 //cloudMapper->AddPointCloud("cloud.ply");    // TODO: change path to the actual point cloud    
   //  cloudMapper->AddTexturedPolygonFromOBJ("/media/mikhail/0FD2D686317633C0/Datasets/rtabmap_DBs/office/december/mesh.obj");
-  //  cloudMapper->generateSearchOctree(0.25f, 100);
     localizer.init(bundle_file, 100000, cluster_file, vw_assignments, 0, 500, 10);
     std::cout << "starting localizer loop" << std::endl;
     cv::Mat tempARCTransform = cv::Mat::eye(4, 4, CV_64F);
