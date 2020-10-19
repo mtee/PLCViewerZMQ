@@ -27,16 +27,12 @@
 #include <assert.h>
 #include <math.h>
 
-#include "semanticgridentry.h"
-
-//#include <opencv/cv.h>
 #include <opencv2/core.hpp>
 #include <opencv2/core/core.hpp>
 #include "opencv2/opencv.hpp"
 #include <opencv2/highgui/highgui.hpp>
 #include <opencv2/imgproc.hpp>
 #include <opencv2/calib3d.hpp>
-//#include <opencv2/xfeatures2d.hpp>
 
 #include <pcl/common/transforms.h>
 #include <pcl/common/common.h>
@@ -89,17 +85,13 @@ public:
 
     PointCloudMapping( double resolution_, int _windowHeight = 1080, int _windowWidth = 1920);
     void keyboardEventOccurred (const pcl::visualization::KeyboardEvent &event, void* junk);
-    void mouseEventOccurred (const pcl::visualization::MouseEvent &event, void* junk);
     void AddPointCloud(std::string filename);
     void AddPointCloud(cv::Mat transform, cv::Mat color, img_coord_t& _cloud, std::string frustumId);
     void AddPointCloud(std::vector<cv::Vec3f> pointList, std::vector<cv::Vec3b> colorsList,float scale = 1);
     void AddPointCloudFromOBJ(std::string filename);
     void AddTexturedPolygonFromOBJ(std::string filename);
     void generateSearchOctree(float res, int _nPointsForSolid);
-    bool addToSemanticGrid(std::string id, std::string name, Eigen::Vector3f minCorner, Eigen::Vector3f maxCorner);
-    bool addToSemanticGrid(std::string id, std::string name, float xcenter, float ycenter, float zcenter, float xsize, float ysize, float zsize);
-    void addTitlesToSemanticGrid();
-    bool readSemanticGridFromJSON(std::string filename);
+ 
     void AddTrainingFrameToPointCloud(cv::Mat& camMatrix, cv::Mat transform, cv::Mat color, cv::Mat depth, std::string frustumId);
     void AddMeshToPointCloud(cv::Mat& camMatrix, cv::Mat transform, cv::Mat color, cv::Mat depth, std::string frustumId);
     cv::Mat AddTestFrameToPointCloud(cv::Mat& camMatrix, cv::Mat transform, cv::Mat color, cv::Mat depth, img_coord_t& cloud, cv::Mat_<cv::Point2i>& sampling, std::string frustumId);
@@ -115,7 +107,6 @@ public:
     void pointPickingEventOccurred (const pcl::visualization::PointPickingEvent& event, void* viewer_void);
     pcl::IndicesPtr radiusFiltering(pcl::PointCloud<PointT>::Ptr & cloud, const pcl::IndicesPtr & indices, float radiusSearch, int minNeighborsInRadius);
     cv::Vec3f GetCloudCentroid();
-    void setSemanticMode(bool val);
 
 private:
     PointCloud::Ptr generatePointCloud(float cx, float cy, float fx, float fy, cv::Mat transform, cv::Mat color, cv::Mat depth, bool gtData, int decimateDepth, float depthMax = 10.0);
@@ -123,7 +114,7 @@ private:
     std::vector<int> filterNotUsedVerticesFromMesh(const pcl::PointCloud<pcl::PointXYZRGB> & cloud, const std::vector<pcl::Vertices> & polygons, pcl::PointCloud<pcl::PointXYZRGB> & outputCloud, std::vector<pcl::Vertices> & outputPolygons);
     bool addTextureMesh(shared_ptr<pcl::visualization::PCLVisualizer> _visualizer,  pcl::TextureMesh::Ptr mesh, const cv::Mat & image, const std::string &id, int viewport);
     void voxelFilterCloud(pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloud);
-    void updateSemanticGridLabels();
+ 
     pcl::PointCloud<pcl::PointXYZRGB>::Ptr voxelize(
             const typename pcl::PointCloud<pcl::PointXYZRGB>::Ptr & cloud,
             const pcl::IndicesPtr & indices,
@@ -151,11 +142,7 @@ private:
 
     bool gotPointCloudAndPolygon = false;
     bool texturedPolyToggle = true;
-    bool semanticMode = false;
-    bool semanticToggle = true;
     bool mouseCurrentlyPressed = false;
-    std::vector<boost::shared_ptr<SemanticGridEntry> > semanticGridList;
-    std::map<std::string, std::vector<boost::shared_ptr<SemanticGridEntry> > > semanticGridMap;
 
     PointT clickSphereCenter;
 

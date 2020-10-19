@@ -2,57 +2,20 @@
 #include <fstream>
 #include <chrono>
 
-#include "opencv2/plot.hpp"
 #include "opencv2/core.hpp"
-
-#include <Poco/SharedPtr.h>
-#include <Poco/Logger.h>
-#include <Poco/LogStream.h>
 
 #include "acs_localizer.h"
 
 #include "pointcloudmapping.h"
-#include "opencv2/core/eigen.hpp"
 
-using namespace Poco;
-//using namespace cv;
 using namespace std::chrono;
 
-const size_t width = 300;
-const size_t height = 300;
-cv::Mat acs_opticalRotInv = (cv::Mat_<double>(4,4) <<
-            0, -1, 0, 0, 0, 0, -1, 0, 1, 0, 0, 0, 0, 0, 0, 1);
-cv::Mat arcore_opticalRotInv = cv::Mat::eye(4, 4, CV_64F);
 
-Poco::SharedPtr<PointCloudMapping> cloudMapper;
-std::string LOGTAG = "ZMQViewer";
 
-cv::Mat camMatrix_raw = cv::Mat::eye(3, 3, CV_64F);
-cv::Mat camMatrix_undistorted = cv::Mat::eye(3, 3, CV_64F);
-cv::Mat cameraImage;
-cv::Mat colorImage;
-cv::Mat arcoreTransform = cv::Mat::eye(4, 4, CV_64F);
-cv::Mat arcoreDiff = cv::Mat::eye(4, 4, CV_64F);
-cv::Mat arcoreSnapshot = cv::Mat::eye(4, 4, CV_64F); // snapshot of the arcore pose valid at the moment of the most recent localization
-cv::Mat acsTransform = cv::Mat::eye(4, 4, CV_64F);
 
-bool poseValid;
-bool localizerWorking;
-cv::RNG rng(12345);
+ cv::RNG rng(12345);
 // substract 1548688800000 to get seconds
-uint64 timestampOffset = 0;
 
-int posesTotal = 24;
-
-uint64 lastImgTimestamp;
-uint64 lastARCTimestamp;
-uint64 currentARCTimestamp;
-
-//std::vector<uint64> imgTimestamps;
-std::vector<uint64> poseTimestamps;
-std::vector<cv::Mat> poses;
-
-int counter = 0;
 
 inline double toDouble(std::string s)
 {
@@ -112,7 +75,7 @@ std::vector<std::string> split(const std::string &s)
 
 
 // function to load pointcloud from visual word assignment (.bin file)
-int loadPointCloudFromBIN(std::string filename, Poco::SharedPtr<PointCloudMapping> cloudMapper, uint32_t nb_clusters){
+int loadPointCloudFromBIN(std::string filename, PointCloudMapping& cloudMapper, uint32_t nb_clusters){
     uint32_t nb_non_empty_vw, nb_3D_points, nb_descriptors;
     std::vector< cv::Vec3f > points3D;
     std::vector< cv::Vec3b > colors_3D;
@@ -151,19 +114,31 @@ int loadPointCloudFromBIN(std::string filename, Poco::SharedPtr<PointCloudMappin
     delete [] point_data;
     delete [] color_data;
     
-    cloudMapper->AddPointCloud(points3D, colors_3D, 1);
+    cloudMapper.AddPointCloud(points3D, colors_3D, 1);
 
     return 1;
 }
 
 
 
-cv::Size size1(640, 480);
-
 int main(int argc, const char *argv[])
 {
+    cout << "Main started" << endl;
+    PointCloudMapping cloudMapper(0.05f);
     pca::ACSLocalizer localizer;
-    poseValid = false;
+    cout << "Localizer initialized" << endl;
+    bool localizerWorking;
+    bool poseValid = false;
+    cv::Mat camMatrix_raw = cv::Mat::eye(3, 3, CV_64F);
+    cv::Mat camMatrix_undistorted = cv::Mat::eye(3, 3, CV_64F);
+    cv::Mat cameraImage;
+    cv::Mat colorImage;
+    cv::Mat arcoreTransform = cv::Mat::eye(4, 4, CV_64F);
+    cv::Mat arcoreDiff = cv::Mat::eye(4, 4, CV_64F);
+    cv::Mat arcoreSnapshot = cv::Mat::eye(4, 4, CV_64F); // snapshot of the arcore pose valid at the moment of the most recent localization
+    cv::Mat acsTransform = cv::Mat::eye(4, 4, CV_64F);
+    cv::Mat acs_opticalRotInv = (cv::Mat_<double>(4,4) <<
+            0, -1, 0, 0, 0, 0, -1, 0, 1, 0, 0, 0, 0, 0, 0, 1);
     // these numbers are suitable for 640x480 images that come from the arcore-fusion-unity-app
     // camMatrix_raw.at<double>(0, 0) = 489.776;
     // camMatrix_raw.at<double>(1, 1) = 493.376;
@@ -187,33 +162,27 @@ int main(int argc, const char *argv[])
 
     camMatrix_undistorted.at<double>(0, 0) = 1140 / 2;
     camMatrix_undistorted.at<double>(1, 1) = 1140 / 2;
-    camMatrix_undistorted.at<double>(0, 2) = 1440 / 4;  // divide by 4 for 360p
-    camMatrix_undistorted.at<double>(1, 2) = 720 / 4;
+    camMatrix_undistorted.at<double>(0, 2) = 1440/4;  // divide by 4 for 360p
+    camMatrix_undistorted.at<double>(1, 2) = 720/4;
     camMatrix_undistorted.at<double>(2, 2) = 1;
 
 
-    lastImgTimestamp = 0;
-    lastARCTimestamp = 0;
-    currentARCTimestamp = 0;
-    //    localizer = Poco::SharedPtr<pca::ACSLocalizer>(new pca::ACSLocalizer());
+    long lastImgTimestamp = 0;
+    long lastARCTimestamp = 0;
+    long currentARCTimestamp = 0;
+    //    localizer = std::shared_ptr<pca::ACSLocalizer>(new pca::ACSLocalizer());
 
-    Logger &logger = Logger::get(LOGTAG);
-
-    cloudMapper = Poco::SharedPtr<PointCloudMapping>(new PointCloudMapping(0.05f));
+ //   cloudMapper = std::make_shared<PointCloudMapping>(0.05f);
 
     std::cout << "point cloud viewer created" << std::endl;
-    std::string dataFolder("/media/mikhail/0FD2D686317633C0/Datasets/rtabmap_DBs/politecnico_milano");
-    std::string cloudFilename("cloud.ply");
     
-    
-    
-    std::string bundle_file(dataFolder + "/bundler/cameras.out"); // TODO: change path to the bundler file exported by rtabmap
-    std::string vw_assignments(dataFolder + "/bundler/desc_assignments.integer_mean.voctree.clusters.bin"); // TODO: change path to the bundler file exported by descriptor assignment tool
-    std::string cluster_file("/home/mikhail/workspace/ACG-localizer/markt_paris_gpu_sift_100k.cluster");    // not model-specific
+    std::string bundle_file("/home/demouser/Documents/RTAB-Map/bundler/office_va8_medium/cameras.out"); // TODO: change path to the bundler file exported by rtabmap
+    std::string vw_assignments("/home/demouser/Documents/RTAB-Map/bundler/office_va8_medium/bundle.desc_assignments.integer_mean.voctree.clusters.100k.bin"); // TODO: change path to the bundler file exported by descriptor assignment tool
+    std::string cluster_file("/home/demouser/acg_localizer/ACG-localizer/markt_paris_gpu_sift_100k.cluster");    // not model-specific
 
 
     loadPointCloudFromBIN(vw_assignments, cloudMapper, 100000);
-//cloudMapper->AddPointCloud(dataFolder +  "/" + cloudFilename);    // TODO: change path to the actual point cloud    
+//cloudMapper->AddPointCloud("cloud.ply");    // TODO: change path to the actual point cloud    
   //  cloudMapper->AddTexturedPolygonFromOBJ("/media/mikhail/0FD2D686317633C0/Datasets/rtabmap_DBs/office/december/mesh.obj");
   //  cloudMapper->generateSearchOctree(0.25f, 100);
     localizer.init(bundle_file, 100000, cluster_file, vw_assignments, 0, 500, 10);
@@ -224,16 +193,17 @@ int main(int argc, const char *argv[])
     //   np->Start();
     int imgIndex = 1;
     ofstream posesFile;
-    posesFile.open ("acsposes.txt");
-    cv::VideoCapture cap("/media/mikhail/0FD2D686317633C0/Datasets/arcore_sessions/milan/167c0949d3f/video-167c0949d3f.mp4"); // Change video input path here
+    posesFile.open ("/home/demouser/Documents/RTAB-Map/va_office/test_video/poses-17521fa0bbf.txt");
+    cv::VideoCapture cap("/home/demouser/Documents/RTAB-Map/va_office/test_video/video-17521fa0ae5.mp4"); // Change video input path here
     int i = 0;
     while (true)
     {
-        logger.debug("waiting for request");
+       // logger.debug("waiting for request");
         
         cv::Mat frame; // bw input image 
         cap >> frame;
-        //  cv::resize(frame, frame, size1);
+	cv::Size size1(775, 360);
+        cv::resize(frame, frame, size1);
         if (frame.empty()) {
             std::cerr << "frame empty" << std::endl;
             break;
@@ -247,7 +217,7 @@ int main(int argc, const char *argv[])
         //           ms.debug() << "image width: " << frame.cols << " , height: " << frame.rows << std::endl;
 
         //
-        logger.debug("frame.rows > 0");
+    //    logger.debug("frame.rows > 0");
         cv::undistort(frame, cameraImage, camMatrix_raw, cv::noArray());
     //    frame.copyTo(cameraImage);
         cv::imshow("Query Image", cameraImage);
@@ -265,7 +235,8 @@ int main(int argc, const char *argv[])
         tempImgTimestamp = lastImgTimestamp;
         cv::Mat tempTransform = localizer.processImage(cameraImage, camMatrix_undistorted, inliers, c2D, c3D, mDescriptors_q, unique_vw);
         i++;
-        std::cout << "localizer found " <<  inliers.rows << " inliers" << std::endl;
+        uint32_t nb_corr = c2D.size() / 2;
+        std::cout << "localizer found " <<  inliers.rows << " inliers " << " and correspondences: " << nb_corr << endl;
         if (tempTransform.empty() || inliers.rows <= 20)
         {
             // send response_msg, that pose could not be computed
@@ -282,18 +253,14 @@ int main(int argc, const char *argv[])
         
         cv::Mat sceneTransform = tempTransform.inv();    // inverting the transform since the client is interested in the scene pose
         acsTransform = tempTransform;
-        cloudMapper->AddOrUpdateFrustum("2", acsTransform.inv(), 0.5, 0, 0, 1, 3, false, acs_opticalRotInv, 0.5, 0.5);
-        logger.debug("AddOrUpdateFrustum");
+        cloudMapper.AddOrUpdateFrustum("2", acsTransform.inv(), 0.5, 0, 0, 1, 3, false, acs_opticalRotInv, 0.5, 0.5);
         // arcoreSnapshot should be the inverse of the arcore pose closest in time to the image pose timestamp.
         localizerWorking = true;
         poseValid = true;
-        uint32_t nb_corr = c2D.size() / 2;
-        logger.debug("correspondences");
+
         if (cameraImage.data)
         {
-            logger.debug("cameraImage.data");
-            cv::cvtColor(cameraImage, colorImage, CV_GRAY2BGR);
-            logger.debug("colorImage.data");
+            cv::cvtColor(cameraImage, colorImage, cv::COLOR_GRAY2BGR);
             double textSize = 1.0;
             int font = cv::FONT_HERSHEY_PLAIN;
             std::ostringstream str;
@@ -378,10 +345,11 @@ int main(int argc, const char *argv[])
     cout << "Press any key to quit.." << endl;
     // press Enter in the console to quit
     std::cin.ignore();
-    logger.information("Stopping dealer");
+    
+ //   logger.information("Stopping dealer");
     // dealer->Stop();
     //
-    logger.information("Stopping proxy");
+  //  logger.information("Stopping proxy");
     // proxy->Stop();
     return 0;
 }

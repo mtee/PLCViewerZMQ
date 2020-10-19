@@ -2,7 +2,6 @@
 #include <fstream>
 #include <chrono>
 
-#include "opencv2/plot.hpp"
 #include "opencv2/core.hpp"
 
 #include <Poco/SharedPtr.h>

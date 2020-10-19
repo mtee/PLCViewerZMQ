@@ -637,61 +637,6 @@ void PointCloudMapping::keyboardEventOccurred(const pcl::visualization::Keyboard
         keyFrameUpdated.notify_one();
         std::cout << "keypress detected" << std::endl;
     }
-    if (event.getKeySym() == "z" && event.keyDown())
-    {
-        semanticMode = !semanticMode;
-        updated = true;
-        filtered = true;
-        keyFrameUpdated.notify_one();
-        std::cout << "keypress detected" << std::endl;
-    }
-}
-
-void PointCloudMapping::mouseEventOccurred(const pcl::visualization::MouseEvent &event, void *viewer_void){
-
-    // update box 2D labels if camera changed and in semantic mode
-    if(!semanticMode) return;
-
-    // camera change when (i) mouse button held down and moved, (ii) mouse button released, (iii) scroll wheel moved
-    if(event.getType() == MouseType::MouseButtonPress) mouseCurrentlyPressed = true;
-    else if(event.getType() == MouseType::MouseButtonRelease) mouseCurrentlyPressed = false;
-
-    bool cameraChanged = (
-        (mouseCurrentlyPressed && event.getType() == MouseType::MouseMove) 
-        || event.getType() == MouseType::MouseButtonRelease 
-        // || ((event.getType() == MouseType::MouseScrollDown || event.getType() == MouseType::MouseScrollUp) && event.getButton() == MouseButton::VScroll)
-        || (event.getType() == MouseType::MouseScrollDown || event.getType() == MouseType::MouseScrollUp)
-        // || event.getButton() == MouseButton::VScroll
-    );
-
-    if(!cameraChanged) return;
-
-    // std::cout << "Got mouse event: " << event.getType() << ", " << event.getButton() << std::endl;
-
-    this->updateSemanticGridLabels();
-}
-
-void PointCloudMapping::updateSemanticGridLabels(){
-    std::vector<pcl::visualization::Camera> cameras;
-    this->visualizer->getCameras(cameras);
-
-    // loop over all semantic boxes and update
-    for(std::vector<boost::shared_ptr<SemanticGridEntry> >::const_iterator it = semanticGridList.begin(); it != semanticGridList.end(); ++it){
-        std::string textId = "title" + (*it)->idTag;
-
-        pcl::PointXYZ worldPos((*it)->maxCorner.x(), (*it)->maxCorner.y(), (*it)->maxCorner.z());
-        Eigen::Vector4d windowPos;
-        cameras[0].cvtWindowCoordinates(worldPos, windowPos);
-
-        int xpos = (int) floor(windowPos(0));
-        int ypos = (int) floor(windowPos(1));
-
-        // std::cout << "On " << textId << ". World pos: " << worldPos << ", screen pos: " << windowPos << ", pixel [" << xpos << ", " << ypos << "]." << std::endl;
-        // std::cout << "   " << textId << ": pixel [" << xpos << ", " << ypos << "]." << std::endl;
-
-        this->visualizer->updateText((*it)->nameTag, xpos, ypos, textId);
-
-    }    
 }
 
 
@@ -1022,211 +967,211 @@ void PointCloudMapping::AddOrUpdateFrustum(
     visualizer->setShapeRenderingProperties(pcl::visualization::PCL_VISUALIZER_LINE_WIDTH, lineWidth, id);
     //            ms.trace() << "frustum mesh added" << std::endl;
 
-    if(useOctree){
-        ++nViews;
+    // if(useOctree){
+    //     ++nViews;
 
-        pcl::PointXYZ p1;
-        p1.x = frustumPoints[0].x;
-        p1.y = frustumPoints[0].y;
-        p1.z = frustumPoints[0].z;
+    //     pcl::PointXYZ p1;
+    //     p1.x = frustumPoints[0].x;
+    //     p1.y = frustumPoints[0].y;
+    //     p1.z = frustumPoints[0].z;
 
-        pcl::PointXYZ p2;   // for line through center of frustum
-        p2.x = (frustumPoints[1].x + frustumPoints[3].x) / 2.;
-        p2.y = (frustumPoints[1].y + frustumPoints[3].y) / 2.;
-        p2.z = (frustumPoints[1].z + frustumPoints[3].z) / 2.;
+    //     pcl::PointXYZ p2;   // for line through center of frustum
+    //     p2.x = (frustumPoints[1].x + frustumPoints[3].x) / 2.;
+    //     p2.y = (frustumPoints[1].y + frustumPoints[3].y) / 2.;
+    //     p2.z = (frustumPoints[1].z + frustumPoints[3].z) / 2.;
 
-        Eigen::Vector3f o(p1.x, p1.y, p1.z);
-        Eigen::Vector3f p(p2.x, p2.y, p2.z);
+    //     Eigen::Vector3f o(p1.x, p1.y, p1.z);
+    //     Eigen::Vector3f p(p2.x, p2.y, p2.z);
 
-        // direction of center of frustum, equivalent to gaze norm pos [0, 0]
-        Eigen::Vector3f center_dir(p - o);
+    //     // direction of center of frustum, equivalent to gaze norm pos [0, 0]
+    //     Eigen::Vector3f center_dir(p - o);
 
-        // define coordinate system of frustum, where Z is along the central sight line
-        Eigen::Vector3f frustumXaxis(
-            frustumPoints[2].x - frustumPoints[1].x,
-            frustumPoints[2].y - frustumPoints[1].y,
-            frustumPoints[2].z - frustumPoints[1].z
-        );
+    //     // define coordinate system of frustum, where Z is along the central sight line
+    //     Eigen::Vector3f frustumXaxis(
+    //         frustumPoints[2].x - frustumPoints[1].x,
+    //         frustumPoints[2].y - frustumPoints[1].y,
+    //         frustumPoints[2].z - frustumPoints[1].z
+    //     );
 
-        frustumXaxis = frustumXaxis.normalized();
+    //     frustumXaxis = frustumXaxis.normalized();
 
-        Eigen::Vector3f frustumYaxis(
-            frustumPoints[3].x - frustumPoints[2].x,
-            frustumPoints[3].y - frustumPoints[2].y,
-            frustumPoints[3].z - frustumPoints[2].z
-        );
+    //     Eigen::Vector3f frustumYaxis(
+    //         frustumPoints[3].x - frustumPoints[2].x,
+    //         frustumPoints[3].y - frustumPoints[2].y,
+    //         frustumPoints[3].z - frustumPoints[2].z
+    //     );
 
-        frustumYaxis = frustumYaxis.normalized();
+    //     frustumYaxis = frustumYaxis.normalized();
 
-        // rotate to gaze position
-        gazeNormX = (gazeNormX * 2.) - 1.;      // shift from [0,1] to [-1, 1]
-        gazeNormY = (gazeNormY * 2.) - 1.;
+    //     // rotate to gaze position
+    //     gazeNormX = (gazeNormX * 2.) - 1.;      // shift from [0,1] to [-1, 1]
+    //     gazeNormY = (gazeNormY * 2.) - 1.;
 
-        // transform gaze norm pos in [-1, 1] to [-Pi/2, Pi/2]
-        // rotation around frustum Y-axis corresponds to gaze norm X-axis
-        Eigen::AngleAxis<float> yRot(gazeNormX * 0.25 * M_PI, frustumYaxis);
+    //     // transform gaze norm pos in [-1, 1] to [-Pi/2, Pi/2]
+    //     // rotation around frustum Y-axis corresponds to gaze norm X-axis
+    //     Eigen::AngleAxis<float> yRot(gazeNormX * 0.25 * M_PI, frustumYaxis);
 
-        // rotation around frustum X-axis corresponds to gaze norm Y-axis
-        Eigen::AngleAxis<float> xRot(gazeNormY * 0.25 * M_PI, frustumXaxis);
+    //     // rotation around frustum X-axis corresponds to gaze norm Y-axis
+    //     Eigen::AngleAxis<float> xRot(gazeNormY * 0.25 * M_PI, frustumXaxis);
 
-        Eigen::Transform<float, 3, Eigen::Affine> t = Eigen::Transform<float, 3, Eigen::Affine>::Identity();
-        t.rotate(yRot);
-        t.rotate(xRot);
+    //     Eigen::Transform<float, 3, Eigen::Affine> t = Eigen::Transform<float, 3, Eigen::Affine>::Identity();
+    //     t.rotate(yRot);
+    //     t.rotate(xRot);
 
-        center_dir = t * center_dir;
+    //     center_dir = t * center_dir;
 
-        pcl::PointXYZ p3;   // for sight lines
-        p3.x = frustumPoints[0].x + 12.5 * center_dir.x();
-        p3.y = frustumPoints[0].y + 12.5 * center_dir.y();
-        p3.z = frustumPoints[0].z + 12.5 * center_dir.z();
+    //     pcl::PointXYZ p3;   // for sight lines
+    //     p3.x = frustumPoints[0].x + 12.5 * center_dir.x();
+    //     p3.y = frustumPoints[0].y + 12.5 * center_dir.y();
+    //     p3.z = frustumPoints[0].z + 12.5 * center_dir.z();
 
-        visualizer->addLine<pcl::PointXYZ, pcl::PointXYZ>(p1, p3, "sightline");
-        this->visualizer->setShapeRenderingProperties(pcl::visualization::RenderingProperties::PCL_VISUALIZER_COLOR, 1., 1., 1., "sightline");
+    //     visualizer->addLine<pcl::PointXYZ, pcl::PointXYZ>(p1, p3, "sightline");
+    //     this->visualizer->setShapeRenderingProperties(pcl::visualization::RenderingProperties::PCL_VISUALIZER_COLOR, 1., 1., 1., "sightline");
 
-        pcl::PointCloud<pcl::PointXYZRGB>::VectorType voxelsInRay;
-        std::vector<int> indicesInRay;
+    //     pcl::PointCloud<pcl::PointXYZRGB>::VectorType voxelsInRay;
+    //     std::vector<int> indicesInRay;
 
-        octreeSearch->getIntersectedVoxelIndices(o, center_dir, indicesInRay);
-        // std::cout << "Got origin [" << o.x() << ", " << o.y() << ", " << o.z() << "], dir [" << dir.x() << ", " << dir.y() << ", " << dir.z() << "]. N voxels: " << indicesInRay.size() << std::endl;
+    //     octreeSearch->getIntersectedVoxelIndices(o, center_dir, indicesInRay);
+    //     // std::cout << "Got origin [" << o.x() << ", " << o.y() << ", " << o.z() << "], dir [" << dir.x() << ", " << dir.y() << ", " << dir.z() << "]. N voxels: " << indicesInRay.size() << std::endl;
 
-        octreeSearch->getIntersectedVoxelCenters(o, center_dir, voxelsInRay);
+    //     octreeSearch->getIntersectedVoxelCenters(o, center_dir, voxelsInRay);
 
-        // reset semantic boxes
-        if(semanticMode){
-            for(std::vector<boost::shared_ptr<SemanticGridEntry> >::iterator it = semanticGridList.begin(); it != semanticGridList.end(); ++it){
-                (*it)->setAlreadyIncremented(false);
-            }
-        }
+    //     // reset semantic boxes
+    //     if(semanticMode){
+    //         for(std::vector<boost::shared_ptr<SemanticGridEntry> >::iterator it = semanticGridList.begin(); it != semanticGridList.end(); ++it){
+    //             (*it)->setAlreadyIncremented(false);
+    //         }
+    //     }
 
-        // increment heat map for all touched voxels
-        for(pcl::PointCloud<pcl::PointXYZRGB>::iterator it = voxelsInRay.begin(); it != voxelsInRay.end(); ++it){
+    //     // increment heat map for all touched voxels
+    //     for(pcl::PointCloud<pcl::PointXYZRGB>::iterator it = voxelsInRay.begin(); it != voxelsInRay.end(); ++it){
 
-            Eigen::Vector3f posvec(it->x, it->y, it->z);
+    //         Eigen::Vector3f posvec(it->x, it->y, it->z);
 
-            Eigen::Vector3i voxelIndex = getVoxelIndex(posvec);
+    //         Eigen::Vector3i voxelIndex = getVoxelIndex(posvec);
 
-            double x = (voxelIndex.x() + 0.5) * voxelSideLength + voxelXmin;
-            double y = (voxelIndex.y() + 0.5) * voxelSideLength + voxelYmin;
-            double z = (voxelIndex.z() + 0.5) * voxelSideLength + voxelZmin;
+    //         double x = (voxelIndex.x() + 0.5) * voxelSideLength + voxelXmin;
+    //         double y = (voxelIndex.y() + 0.5) * voxelSideLength + voxelYmin;
+    //         double z = (voxelIndex.z() + 0.5) * voxelSideLength + voxelZmin;
 
-            double s = voxelSideLength / 2.0;
+    //         double s = voxelSideLength / 2.0;
 
-            std::vector<int> voxelIndices;
-            int nPointsInVoxel = octreeSearch->boxSearch(Eigen::Vector3f(x-s, y-s, z-s), Eigen::Vector3f(x+s, y+s, z+s), voxelIndices);
+    //         std::vector<int> voxelIndices;
+    //         int nPointsInVoxel = octreeSearch->boxSearch(Eigen::Vector3f(x-s, y-s, z-s), Eigen::Vector3f(x+s, y+s, z+s), voxelIndices);
 
-            // std::cout << nPointsInVoxel << " ";
+    //         // std::cout << nPointsInVoxel << " ";
 
-            std::string indexString = getVoxelIndexString(posvec);
+    //         std::string indexString = getVoxelIndexString(posvec);
 
-            attentionHeatMap[indexString]++;
+    //         attentionHeatMap[indexString]++;
 
-            // generate cube if first encountered
-            if(attentionHeatMap[indexString] == 1){
-                // add new cube
-                activeCubeIndices.push_back(indexString);
+    //         // generate cube if first encountered
+    //         if(attentionHeatMap[indexString] == 1){
+    //             // add new cube
+    //             activeCubeIndices.push_back(indexString);
 
-                // std::cout << "Adding cube at [" << x << ", " << y << ", " << z << "], index " << indexString << std::endl;
+    //             // std::cout << "Adding cube at [" << x << ", " << y << ", " << z << "], index " << indexString << std::endl;
 
-                if(!semanticMode){
-                    visualizer->addCube(x - s, x + s, y - s, y + s, z - s , z + s, 0.5, 0.5, 0.5, indexString);
-                    this->visualizer->setShapeRenderingProperties(pcl::visualization::RenderingProperties::PCL_VISUALIZER_OPACITY, 0.3, indexString);
-                }
-            }
+    //             if(!semanticMode){
+    //                 visualizer->addCube(x - s, x + s, y - s, y + s, z - s , z + s, 0.5, 0.5, 0.5, indexString);
+    //                 this->visualizer->setShapeRenderingProperties(pcl::visualization::RenderingProperties::PCL_VISUALIZER_OPACITY, 0.3, indexString);
+    //             }
+    //         }
             
-            // check for associated semantic box
-            if(semanticMode && !semanticGridMap[indexString].empty()){
-                // got association, increment if not already incremented in this update
-                for(std::vector<boost::shared_ptr<SemanticGridEntry>>::iterator it = semanticGridMap[indexString].begin(); it != semanticGridMap[indexString].end(); ++it){
+    //         // check for associated semantic box
+    //         if(semanticMode && !semanticGridMap[indexString].empty()){
+    //             // got association, increment if not already incremented in this update
+    //             for(std::vector<boost::shared_ptr<SemanticGridEntry>>::iterator it = semanticGridMap[indexString].begin(); it != semanticGridMap[indexString].end(); ++it){
 
-                    if((*it)->getAlreadyIncremented()) continue;
+    //                 if((*it)->getAlreadyIncremented()) continue;
 
-                    (*it)->increment();
-                    (*it)->setAlreadyIncremented(true);
-                }
-            }
+    //                 (*it)->increment();
+    //                 (*it)->setAlreadyIncremented(true);
+    //             }
+    //         }
 
-            // can try terminating sight line if solid "wall" is encountered, 
-            // i.e. voxel with more than a certain number of points
-            if(nPointsInVoxel > nPointsForSolid) {
-                // try setting sight line here to that voxel
-                this->visualizer->removeShape("sightline");
-                pcl::PointXYZ p3(x, y, z);
-                this->visualizer->addLine<pcl::PointXYZ, pcl::PointXYZ>(p1, p3, "sightline");
-                this->visualizer->setShapeRenderingProperties(pcl::visualization::RenderingProperties::PCL_VISUALIZER_COLOR, 1., 1., 1., "sightline");
+    //         // can try terminating sight line if solid "wall" is encountered, 
+    //         // i.e. voxel with more than a certain number of points
+    //         if(nPointsInVoxel > nPointsForSolid) {
+    //             // try setting sight line here to that voxel
+    //             this->visualizer->removeShape("sightline");
+    //             pcl::PointXYZ p3(x, y, z);
+    //             this->visualizer->addLine<pcl::PointXYZ, pcl::PointXYZ>(p1, p3, "sightline");
+    //             this->visualizer->setShapeRenderingProperties(pcl::visualization::RenderingProperties::PCL_VISUALIZER_COLOR, 1., 1., 1., "sightline");
 
-                // std::cout << "Terminating line point: [" << x << ", " << y << ", " << z << "]." << std::endl;
+    //             // std::cout << "Terminating line point: [" << x << ", " << y << ", " << z << "]." << std::endl;
 
-                break;
-            }
+    //             break;
+    //         }
 
-        }
+    //     }
 
-        // std::cout << std::endl;
+    //     // std::cout << std::endl;
 
-        // change color for all active heat map voxels
-        if(semanticMode){
-            // get maximum heat map value
-            int semanticMapMax = 0;
+    //     // change color for all active heat map voxels
+    //     if(semanticMode){
+    //         // get maximum heat map value
+    //         int semanticMapMax = 0;
 
-            for(std::vector<boost::shared_ptr<SemanticGridEntry> >::iterator it = semanticGridList.begin(); it != semanticGridList.end(); ++it){
-                if((*it)->getHeatMapValue() > semanticMapMax) semanticMapMax = (*it)->getHeatMapValue();
-            }
+    //         for(std::vector<boost::shared_ptr<SemanticGridEntry> >::iterator it = semanticGridList.begin(); it != semanticGridList.end(); ++it){
+    //             if((*it)->getHeatMapValue() > semanticMapMax) semanticMapMax = (*it)->getHeatMapValue();
+    //         }
 
-            for(std::vector<boost::shared_ptr<SemanticGridEntry> >::iterator it = semanticGridList.begin(); it != semanticGridList.end(); ++it){
-                if((*it)->getHeatMapValue() == 0.) continue;
+    //         for(std::vector<boost::shared_ptr<SemanticGridEntry> >::iterator it = semanticGridList.begin(); it != semanticGridList.end(); ++it){
+    //             if((*it)->getHeatMapValue() == 0.) continue;
 
-                // calculate relative heat map value
-                double heatVal = (*it)->getHeatMapValue() / (double) semanticMapMax;
+    //             // calculate relative heat map value
+    //             double heatVal = (*it)->getHeatMapValue() / (double) semanticMapMax;
 
-                // get color value
-                Eigen::Vector3f col_vector = getColourFromValue(heatVal, 0., 1.);
+    //             // get color value
+    //             Eigen::Vector3f col_vector = getColourFromValue(heatVal, 0., 1.);
 
-                // double opacity = 0.95 * heatval;        // orig
-                double opacity = 0.95 * (0.2 + heatVal);
-                if(opacity > 0.95) opacity = 0.95;
+    //             // double opacity = 0.95 * heatval;        // orig
+    //             double opacity = 0.95 * (0.2 + heatVal);
+    //             if(opacity > 0.95) opacity = 0.95;
 
-                this->visualizer->setShapeRenderingProperties(pcl::visualization::RenderingProperties::PCL_VISUALIZER_OPACITY, opacity, (*it)->idTag);
-                // this->visualizer->setShapeRenderingProperties(pcl::visualization::RenderingProperties::PCL_VISUALIZER_COLOR, 0., 0., opacity, (*it)->idTag);
-                this->visualizer->setShapeRenderingProperties(pcl::visualization::RenderingProperties::PCL_VISUALIZER_COLOR, col_vector.x(), col_vector.y(), col_vector.z(), (*it)->idTag);
+    //             this->visualizer->setShapeRenderingProperties(pcl::visualization::RenderingProperties::PCL_VISUALIZER_OPACITY, opacity, (*it)->idTag);
+    //             // this->visualizer->setShapeRenderingProperties(pcl::visualization::RenderingProperties::PCL_VISUALIZER_COLOR, 0., 0., opacity, (*it)->idTag);
+    //             this->visualizer->setShapeRenderingProperties(pcl::visualization::RenderingProperties::PCL_VISUALIZER_COLOR, col_vector.x(), col_vector.y(), col_vector.z(), (*it)->idTag);
 
-            }
-        }
-        else{
-            // get maximum heat map value
-            int heatMapMax = 0;
-            for(std::map<std::string, int>::const_iterator it = attentionHeatMap.begin(); it != attentionHeatMap.end(); ++it){
-                if(it->second > heatMapMax) heatMapMax = it->second;
-            }
+    //         }
+    //     }
+    //     else{
+    //         // get maximum heat map value
+    //         int heatMapMax = 0;
+    //         for(std::map<std::string, int>::const_iterator it = attentionHeatMap.begin(); it != attentionHeatMap.end(); ++it){
+    //             if(it->second > heatMapMax) heatMapMax = it->second;
+    //         }
 
-            for(std::map<std::string, int>::const_iterator it = attentionHeatMap.begin(); it != attentionHeatMap.end(); ++it){
+    //         for(std::map<std::string, int>::const_iterator it = attentionHeatMap.begin(); it != attentionHeatMap.end(); ++it){
 
-                // calculate relative heat map value
-                double heatVal = it->second / (double) heatMapMax;
+    //             // calculate relative heat map value
+    //             double heatVal = it->second / (double) heatMapMax;
 
-                if(it->second == heatMapMax && it->first != lastMapMax){
-                    Eigen::Vector3f pos = this->getVoxelCenter(it->first);
-                    // std::cout << "Maximal heat map changed (" << lastMapMax << " -> " << it->first << "). Center at [" << pos.x() << ", " << pos.y() << ", " << pos.z() << "]." << std::endl;
+    //             if(it->second == heatMapMax && it->first != lastMapMax){
+    //                 Eigen::Vector3f pos = this->getVoxelCenter(it->first);
+    //                 // std::cout << "Maximal heat map changed (" << lastMapMax << " -> " << it->first << "). Center at [" << pos.x() << ", " << pos.y() << ", " << pos.z() << "]." << std::endl;
 
-                    lastMapMax = it->first;
-                }
+    //                 lastMapMax = it->first;
+    //             }
 
-                // get color value
-                Eigen::Vector3f col_vector = getColourFromValue(heatVal, 0., 1.);
+    //             // get color value
+    //             Eigen::Vector3f col_vector = getColourFromValue(heatVal, 0., 1.);
 
-                double opacity = 0.95 * (0.2 + heatVal);     // color version
-                if(opacity > 0.95) opacity = 0.95;
+    //             double opacity = 0.95 * (0.2 + heatVal);     // color version
+    //             if(opacity > 0.95) opacity = 0.95;
 
-                // double opacity = 0.7 * (0.2 + heatVal);     // greyscale version
-                // if(opacity > 0.7) opacity = 0.7;
+    //             // double opacity = 0.7 * (0.2 + heatVal);     // greyscale version
+    //             // if(opacity > 0.7) opacity = 0.7;
 
-                this->visualizer->setShapeRenderingProperties(pcl::visualization::RenderingProperties::PCL_VISUALIZER_OPACITY, opacity, it->first);
-                this->visualizer->setShapeRenderingProperties(pcl::visualization::RenderingProperties::PCL_VISUALIZER_COLOR, col_vector.x(), col_vector.y(), col_vector.z(), it->first);
-                // this->visualizer->setShapeRenderingProperties(pcl::visualization::RenderingProperties::PCL_VISUALIZER_COLOR, 0.,opacity, 0.,  it->first);
-            }
-        }
-    }
+    //             this->visualizer->setShapeRenderingProperties(pcl::visualization::RenderingProperties::PCL_VISUALIZER_OPACITY, opacity, it->first);
+    //             this->visualizer->setShapeRenderingProperties(pcl::visualization::RenderingProperties::PCL_VISUALIZER_COLOR, col_vector.x(), col_vector.y(), col_vector.z(), it->first);
+    //             // this->visualizer->setShapeRenderingProperties(pcl::visualization::RenderingProperties::PCL_VISUALIZER_COLOR, 0.,opacity, 0.,  it->first);
+    //         }
+    //     }
+    // }
 
-  //  this->visualizer->updatePointCloud(globalMap, "cloud");
+//    this->visualizer->updatePointCloud(globalMap, "cloud");
     
     lock_M.unlock();
 
@@ -1293,8 +1238,6 @@ void PointCloudMapping::Visualize()
         lock_N.unlock();
         
         this->visualizer->spinOnce(5);
-
-        this->updateSemanticGridLabels();
 
         // Get lock on the boolean update and check if cloud was updated
 
@@ -1791,170 +1734,6 @@ void PointCloudMapping::generateSearchOctree(float res, int _nPointsForSolid) {
     // keyFrameUpdated.notify_one();
 }
 
-bool PointCloudMapping::addToSemanticGrid(std::string id, std::string name, Eigen::Vector3f minCorner, Eigen::Vector3f maxCorner){
-    // generate a mapping between named box-shaped objects and the search grid
-    // boost::mutex::scoped_lock lock_L(mL);
-    // boost::mutex::scoped_lock lock_N(mN);
-    // boost::mutex::scoped_lock lock_M(mD);
-    // lock_N.unlock();
-    
-    std::cout << "Processing semantic grid entry: " << name << " with ID " << id << "." << std::endl;
-
-    // sanity check
-    if(minCorner.x() > maxCorner.x() || minCorner.y() > maxCorner.y() || minCorner.z() > maxCorner.z()){
-        std::cout << "ERROR: semantic grid box corners not well defined (at least one minimum coordinate is larger than the maximum)." << std::endl;
-        std::cout << "   Failed to add entry." << std::endl;
-
-        return false;
-    }
-
-    boost::shared_ptr<SemanticGridEntry> newEntry = boost::make_shared<SemanticGridEntry>(id, name, minCorner, maxCorner);
-
-    semanticGridList.push_back(newEntry);
-
-    // find intersecting corners of grid
-    Eigen::Vector3i gridMinCorner = this->getVoxelIndex(minCorner);
-    Eigen::Vector3i gridMaxCorner = this->getVoxelIndex(maxCorner);
-
-    // add all voxels within the corners to semantic map
-    for(int x = gridMinCorner.x(); x <= gridMaxCorner.x(); ++x)
-        for(int y = gridMinCorner.y(); y <= gridMaxCorner.y(); ++y)
-            for(int z = gridMinCorner.z(); z <= gridMaxCorner.z(); ++z){
-
-                std::string indexStr = this->getVoxelIndexString(Eigen::Vector3i(x, y, z));
-
-                semanticGridMap[indexStr].push_back(newEntry);
-
-                // std::cout << "  Updated voxel " << indexStr << std::endl;
-            }
-    
-    // add box to visualizer
-    this->visualizer->addCube(minCorner.x(), maxCorner.x(), minCorner.y(), maxCorner.y(), minCorner.z() , maxCorner.z(), 0., 0.5, 0.5, id);
-    this->visualizer->setShapeRenderingProperties(pcl::visualization::RenderingProperties::PCL_VISUALIZER_OPACITY, 0.3, id);
-
-    // std::string tmpname = id + "_name";
-    // this->visualizer->addCube(minCorner.x(), maxCorner.x(), minCorner.y(), maxCorner.y(), minCorner.z() , maxCorner.z(), 1., 1., 1., tmpname);
-
-    // add box title
-    // std::string textId = "title" + id;
-    // pcl::PointXYZ textPos(maxCorner.x(), maxCorner.y(), maxCorner.z());
-    // std::cout << "Text id: " << textId << ", pos: " << textPos << std::endl;
-    // this->visualizer->addText3D(name, textPos, 1., 1., 1., 1., textId);     
-    
-    // if(id=="8"){
-    //     pcl::PointXYZ textPos(5.18864,-6.54947,0.206738);
-    //     this->visualizer->addText3D("testText", textPos);
-    // }
-
-    std::cout << "   Entry added successfully." << std::endl;
-
-    // keyFrameUpdated.notify_one();
-
-    return true;
-}
-
-bool PointCloudMapping::addToSemanticGrid(std::string id, std::string name, float xcenter, float ycenter, float zcenter, float xsize, float ysize, float zsize){
-
-    Eigen::Vector3f minCorner(
-        xcenter - (xsize/2.),
-        ycenter - (ysize/2.),
-        zcenter - (zsize/2.)
-    );
-
-    Eigen::Vector3f maxCorner(
-        xcenter + (xsize/2.),
-        ycenter + (ysize/2.),
-        zcenter + (zsize/2.)
-    );
-
-    this->addToSemanticGrid(id, name, minCorner, maxCorner);
-}
-
-void PointCloudMapping::addTitlesToSemanticGrid(){
-
-    boost::mutex::scoped_lock lock_L(mL);
-    boost::mutex::scoped_lock lock_N(mN);
-    boost::mutex::scoped_lock lock_M(mD);
-    lock_N.unlock();
-
-    // PointT textPos;
-    // textPos.x =  4.18864;
-    // textPos.y = -3.54947;
-    // textPos.z = 0.206738;
-    // this->visualizer->addText3D("testText", textPos);
-
-    // cv::waitKey(1000);
-
-    // PointT textPos2;
-    // textPos2.x =  6.18864;
-    // textPos2.y = -6.54947;
-    // textPos2.z = 0.206738;
-
-    // this->visualizer->addText3D("testText2", textPos2);
-
-    int i = 10;
-
-    for(std::vector<boost::shared_ptr<SemanticGridEntry> >::const_iterator it = semanticGridList.begin(); it != semanticGridList.end(); ++it){
-        std::string textId = "title" + (*it)->idTag;
-        pcl::PointXYZ textPos((*it)->maxCorner.x(), (*it)->maxCorner.y(), (*it)->maxCorner.z());
-        std::cout << "Text id: " << textId << ", title: " << (*it)->nameTag << ", pos: " << textPos << std::endl;
-        std::string nameStr = (*it)->nameTag;
-        // this->visualizer->addText3D((std::string) (*it)->nameTag, textPos, 1., 1., 1., 1., textId);     
-        // this->visualizer->addText3D((*it)->nameTag, textPos, 1., 1., 1., 1., textId, 0);
-        this->visualizer->addText((*it)->nameTag, i, i, textId);
-        i += 20;
-    }
-
-}
-
-bool PointCloudMapping::readSemanticGridFromJSON(std::string filename){
-    boost::mutex::scoped_lock lock_L(mL);
-    boost::mutex::scoped_lock lock_N(mN);
-    boost::mutex::scoped_lock lock_M(mD);
-    lock_N.unlock();
-
-    std::cout << "Reading JSON file " << filename << "." << std::endl;
-
-    boost::property_tree::ptree pt;
-    boost::property_tree::read_json(filename, pt);
-
-    BOOST_FOREACH(boost::property_tree::ptree::value_type &v, pt.get_child("collections"))
-    {
-        BOOST_FOREACH(boost::property_tree::ptree::value_type &v2, v.second.get_child("data"))
-        {
-            std::string id = v2.second.get<std::string>("$loki");
-
-            std::string titlestr = v2.second.get<std::string>("title");
-            std::vector<float> posvec, sizevec;
-
-            std::cout << "ID " << id << ", title: " << titlestr << ". Position: [";
-            BOOST_FOREACH(boost::property_tree::ptree::value_type &v3, v2.second.get_child("position"))
-            {
-                posvec.push_back(std::atof(v3.second.data().c_str()));
-                std::cout << v3.second.data() << " ";
-            }
-            std::cout << "]. Dimensions: [";
-            BOOST_FOREACH(boost::property_tree::ptree::value_type &v3, v2.second.get_child("volume_scale"))
-            {
-                sizevec.push_back(std::atof(v3.second.data().c_str()));
-                std::cout << v3.second.data() << " ";
-            }
-            std::cout << "]." << std::endl;
-
-            // check obtained values
-            assert(posvec.size()==3);
-            assert(sizevec.size()==3);
-
-            // generate semantic grid entry
-            this->addToSemanticGrid(id, titlestr, posvec[0], posvec[1], posvec[2], sizevec[0], sizevec[1], sizevec[2]);
-        }
-    }
-
-    std::cout << "JSON file done." << std::endl;
-
-    return true;
-}
-
 Eigen::Vector3i PointCloudMapping::getVoxelIndex(Eigen::Vector3f pos){
 
     Eigen::Vector3i indexVector(
@@ -2038,8 +1817,3 @@ Eigen::Vector3f PointCloudMapping::getColourFromValue(double v, double vmin, dou
 
     return col_vector;
 }
-
-void PointCloudMapping::setSemanticMode(bool val){
-    this->semanticMode = val;
-}
-
