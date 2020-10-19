@@ -1201,11 +1201,9 @@ void PointCloudMapping::Visualize()
     
     this->visualizer->setBackgroundColor(0, 0, 0);
     this->visualizer->registerKeyboardCallback(&PointCloudMapping::keyboardEventOccurred, *this);
-    this->visualizer->registerMouseCallback(&PointCloudMapping::mouseEventOccurred, *this);
     this->visualizer->registerPointPickingCallback(&PointCloudMapping::pointPickingEventOccurred, *this);
-    // this->visualizer->addCoordinateSystem(1.0);
     this->visualizer->setCameraClipDistances(0.001, 1000);
-    // x=red axis, y=green axis, z=blue axis z direction is point into the screen.
+    // x=red axis, y=green axis, z=blue axis z direction is pointed into the screen.
     this->visualizer->addCoordinateSystem(1.0);
 
     this->visualizer->setSize(windowWidth, windowHeight);
