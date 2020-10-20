@@ -1,0 +1,120 @@
+syntax = "proto3";
+
+import "google/protobuf/wrappers.proto";
+import "google/protobuf/any.proto";
+
+package proto.positioning;
+
+//----- Positioning Entrypoint ------//
+
+//----- Basic Data Types ------//
+message CartesianLocation
+{
+  float x = 1;
+  float y = 2;
+  float z = 3;
+}
+
+message GeoLocation3D
+{
+  double longitude = 1;
+  double latitude = 2;
+  float z = 3;
+}
+
+message Quaternion
+{
+  float x = 1;
+  float y = 2;
+  float z = 3;
+  float w = 4;
+}
+
+message CartesianPose
+{
+  CartesianLocation location = 1;
+  Quaternion orientation = 2;
+}
+
+message GeoPose
+{
+  GeoLocation3D location = 1;
+  Quaternion orientation = 2;
+}
+
+//-----------------------//
+
+//----- Geometric Subsetting ------//
+
+message PolygonSearchSubset
+{
+  message GeoLocation2D
+  {
+    double longitude = 1;
+    double latitude = 2;
+  }
+
+  repeated GeoLocation2D points = 1; // first point == last point
+  google.protobuf.FloatValue z_from = 2;
+  google.protobuf.FloatValue z_to = 3;
+}
+
+message CylinderSearchSubset
+{
+  GeoLocation3D center = 1;
+  float radius = 2;
+  google.protobuf.FloatValue z_offset = 3;
+}
+
+//-----------------------//
+
+message WifiNetworkMeasurement
+{
+  string mac_address = 1;
+  int32 frequency_mhz = 2;
+  int32 level_db = 3;
+  string ssid = 4;
+}
+
+message BluetoothMeasurement
+{
+  string mac_address = 1;
+  int32 level_db = 2;
+}
+
+message CameraIntrinsics
+{
+  float fx = 1;
+  float fy = 2;
+  float px = 3;
+  float py = 4;
+}
+
+message VisualMeasurement
+{
+  bytes picture = 1;
+  CameraIntrinsics camera_intrinsics = 2;
+  CartesianPose relative_camera_pose = 3; // not optional
+}
+
+message Query
+{
+  string query_id = 1;
+  repeated WifiNetworkMeasurement wifi_measurements = 2;
+  repeated BluetoothMeasurement bluetooth_measurements = 3;
+  repeated VisualMeasurement visual_measurements = 4;
+  repeated google.protobuf.Any search_subsets = 5;
+}
+
+message PoseEstimate
+{
+  GeoPose geo_pose = 1;
+  CartesianPose site_pose = 2;
+}
+
+message Response
+{
+  string query_id = 1;
+  PoseEstimate pose_estimate = 2;
+  float confidence = 3;
+}
