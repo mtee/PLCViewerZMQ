@@ -1232,6 +1232,7 @@ void PointCloudMapping::AddTexturedPolygonFromOBJ(std::string filename){
     boost::mutex::scoped_lock lock_L(mL);
     boost::mutex::scoped_lock lock_N(mN);
     boost::mutex::scoped_lock lock_M(mD);
+    std::cout << "acquired mutexes" << std::endl;
     lock_N.unlock();
 
     // texture loading issue workaround (from https://github.com/PointCloudLibrary/pcl/issues/2252)
@@ -1239,10 +1240,12 @@ void PointCloudMapping::AddTexturedPolygonFromOBJ(std::string filename){
     if(pcl::io::loadPolygonFileOBJ (filename, mesh1) == -1){
         PCL_ERROR ("Couldn't read file \n");
     }
+    std::cout << "loadPolygonFileOBJ" << std::endl;
     pcl::TextureMesh mesh2;
     if(pcl::io::loadOBJFile (filename, mesh2) == -1){
         PCL_ERROR ("Couldn't read file \n");
     }
+    std::cout << "loadOBJFile" << std::endl;
     mesh1.tex_materials = mesh2.tex_materials;
     std::string id("texturedpolygon");
     this->visualizer->addTextureMesh (mesh1,id);

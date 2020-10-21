@@ -31,7 +31,7 @@ include_directories(${OpenCV_INCLUDE_DIRS} )
 
 
 #PCL
-find_package(PCL 1.7 REQUIRED)
+find_package(PCL 1.8 REQUIRED)
 include_directories(${PCL_INCLUDE_DIRS})
 link_directories(${PCL_LIBRARY_DIRS})
 add_definitions(${PCL_DEFINITIONS})
@@ -40,6 +40,16 @@ add_definitions(${PCL_DEFINITIONS})
 find_package(ZMQ REQUIRED)
 find_package(cppzmq REQUIRED)
 include_directories(${ZMQ_INCLUDE_DIRS})
+
+#PROTOBUF
+FIND_PACKAGE(Protobuf 3.13.0 REQUIRED)
+IF(PROTOBUF_FOUND)
+   MESSAGE(STATUS "Found Protobuf: ${PROTOBUF_INCLUDE_DIR}")
+ENDIF()
+IF(PROTOBUF_FOUND)
+   MESSAGE(STATUS "Found Protobuf: ${PROTOBUF_LIBRARIES}")
+ENDIF()
+include_directories(${PROTOBUF_INCLUDE_DIR})
 
 
 #FLANN
@@ -86,16 +96,25 @@ add_executable(video_app
     src/vtkImageMatSource.cpp
 )
 
+add_executable(zmq_req_rep_app
+    src/zmq_req_rep_app.cpp
+    src/pointcloudmapping.cpp
+    src/vtkImageMatSource.cpp
+    src/positioning.pb.cc
+)
+
+
 set(LIBS
 "/home/demouser/acg_localizer/ACG-localizer/lib/libacs_localizer.so"
 ${PCL_LIBRARIES}
 ${OpenCV_LIBS}
 ${ZMQ_LIBRARIES}
 ${cppzmq_LIBRARY}
+${PROTOBUF_LIBRARIES}
 )
 
 target_include_directories(video_app PUBLIC /home/demouser/acg_localizer/ACG-localizer/include)
 target_link_libraries(video_app ${LIBS})
 
-#target_include_directories(arcore_merge_app PUBLIC /home/demouser/acg_localizer/ACG-localizer/include)
-#target_link_libraries(arcore_merge_app ${LIBS})
+target_include_directories(zmq_req_rep_app PUBLIC /home/demouser/acg_localizer/ACG-localizer/include)
+target_link_libraries(zmq_req_rep_app ${LIBS})
